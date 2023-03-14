@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -93,6 +94,20 @@ func StartBot(cancel chan bool, bot IBot) error {
 			go func() {
 				// reply to the same message from the bot
 				// NewReply(reflect.TypeOf(&TextReply{}))
+				url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage?chat_id=%d&text=sabka randi naach na karwaya to naam botmincock nahi", bot.Token(), updt.Message.Chat.Id)
+				cli := http.Client{Timeout: 5 * time.Second}
+				byt, _ := json.Marshal(map[string]interface{}{
+					"text": "kaun hai be? kaun gaaliya bak raha tha?",
+				})
+				req, _ := http.NewRequest("POST", url, bytes.NewBuffer(byt))
+				resp, err := cli.Do(req)
+				if resp.StatusCode != 200 || err != nil {
+					log.WithFields(log.Fields{
+						"url":  url,
+						"err":  err,
+						"code": resp.StatusCode,
+					}).Error("error sending a message to the server")
+				}
 			}()
 		case <-cancel:
 			return nil

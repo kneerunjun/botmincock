@@ -8,5 +8,8 @@ type BotUpdate struct {
 			UName string `json:"username"`
 		} `json:"from"`
 		Text string `json:"text"`
+		Chat struct {
+			Id int64 `json:"id"`
+		} `json:"chat"`
 	} `json:"message"`
 }
