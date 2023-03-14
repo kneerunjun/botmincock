@@ -1,0 +1,24 @@
+version: '3.1'
+
+services:
+  botmincock:
+    build: 
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - SRC=${SRCDIR}
+        - LOG=${LOGDIR}
+        - RUN=${RUNDIR}
+        - ETC=${ETCDIR}
+        - BIN=${BINDIR}
+    ports:
+      - 8080:8080
+    volumes:
+      - ${LOGDIR}:${LOGDIR}
+    environment: 
+      - LOGF=${LOGDIR}/botmincock.log
+      - GIN_MODE=${GIN_MODE}
+    stdin_open: true 
+    tty: true
+    container_name: ctn_botminc
+    entrypoint: ["${BINDIR}/botmincock", "-verbose=${VERBOSE}", "-flog=${FLOG}"]
