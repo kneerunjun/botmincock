@@ -22,3 +22,8 @@ services:
     tty: true
     container_name: ctn_botminc
     entrypoint: ["${BINDIR}/botmincock", "-verbose=${VERBOSE}", "-flog=${FLOG}"]
+    secrets:
+      - token_secret
+secrets:
+  token_secret:
+    file: tok.secret

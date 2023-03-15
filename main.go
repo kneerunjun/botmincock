@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"os"
 	"os/signal"
@@ -61,13 +62,29 @@ func main() {
 			log.SetOutput(lf)
 		}
 	}
+	// loading the secrets
+	f, err := os.Open("/run/secrets/token_secret")
+	if err != nil {
+		log.Fatal("failed to load bot access key, kindly check and run again")
+	}
+	rdr := bufio.NewReader(f)
+	byt, _, err := rdr.ReadLine()
+	if err != nil {
+		log.Fatal("failed to read token for bot, check and run again")
+	}
+	tok := string(byt)
+	log.WithFields(log.Fields{
+		"token": tok,
+	}).Debug("bot secret token is read..")
 	log.Info("Grab your cocks, botmincocks is coming up now..")
 	defer log.Warn("botmincock now shutting down")
 
 	var wg sync.WaitGroup
 	cancel := make(chan bool)
 	defer close(cancel)
-	botmincock := NewTeleGBot(&BotConfig{Token: "6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk"}, reflect.TypeOf(&SharedExpensesBot{}))
+	// TODO: private keys cannot be exposed here
+	// this has to come from secret files
+	botmincock := NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&SharedExpensesBot{}))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
