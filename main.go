@@ -3,11 +3,16 @@ package main
 import (
 	"bufio"
 	"flag"
+	"fmt"
 	"os"
 	"os/signal"
 	"reflect"
+	"regexp"
 	"sync"
 	"syscall"
+	"time"
+
+	"github.com/kneerunjun/botmincock/botcore"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -15,6 +20,18 @@ import (
 var (
 	FVerbose, FLogF bool
 	logFile         string
+	allCommands     = []*regexp.Regexp{
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
+	}
+	textCommands = []*regexp.Regexp{
+		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance
+		regexp.MustCompile(`^(?P<cmd>(?i)(good[\s]*morning))$`),
+	}
+)
+
+const (
+	MAX_COINC_UPDATES = 10
+	BOT_TICK_SECS     = 3 * time.Second
 )
 
 func init() {
@@ -84,7 +101,7 @@ func main() {
 	defer close(cancel)
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
-	botmincock := NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&SharedExpensesBot{}))
+	botmincock := botcore.NewTeleGBot(&botcore.BotConfig{Token: tok}, reflect.TypeOf(&botcore.SharedExpensesBot{}))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -96,11 +113,56 @@ func main() {
 		<-sigs
 		close(cancel)
 	}()
+	// ---------- now starting to watch periodic updates
+	// -------------------------------------------------
+	botCallouts := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	defer close(botCallouts)
+	botCommands := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	defer close(botCommands)
+	txtMsgs := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	defer close(txtMsgs)
 	wg.Add(1)
-
 	go func() {
 		defer wg.Done()
-		StartBot(cancel, botmincock)
+		// TODO: each filter shall have a dedicated channel that it shall dispatch the update to
+		// as the filters execute in sequence, the update message is tested for type
+		// once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
+		// a filter can also abort the testing of subsequent filters
+		filters := []botcore.BotUpdtFilter{
+			&botcore.GrpConvFilter{PassChn: nil},
+			&botcore.NonZeroIDFilter{PassChn: nil},
+			&botcore.BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
+			&botcore.BotCalloutFilter{PassChn: botCallouts},
+			&botcore.TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
+		}
+		botcore.WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
+	}()
+	// ----------- now setting up the thread to consume updates
+	// ---------------------------------------------------------
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case updt := <-botCallouts:
+				// parsing the updates
+				log.WithFields(log.Fields{
+					"text": updt.Message.Text,
+				}).Debug("Received a bot callout ..")
+			case updt := <-botCommands:
+				// parsing the updates
+				log.WithFields(log.Fields{
+					"text": updt.Message.Text,
+				}).Debug("Received a bot command ..")
+			case updt := <-txtMsgs:
+				// parsing the updates
+				log.WithFields(log.Fields{
+					"text": updt.Message.Text,
+				}).Debug("Received a text command ..")
+			case <-cancel:
+				return
+			}
+		}
 	}()
 	wg.Wait()
 

@@ -1,6 +1,15 @@
 version: '3.1'
 
 services:
+  mongostore:
+    image: mongo:4.2-bionic
+    ports:
+        - 27017:27017
+    volumes: 
+      - /data/db:/data/db
+    tty: true
+    stdin_open: true
+    container_name: ctn_store
   botmincock:
     build: 
       context: .
@@ -18,6 +27,9 @@ services:
     environment: 
       - LOGF=${LOGDIR}/botmincock.log
       - GIN_MODE=${GIN_MODE}
+      - BOT_HANDLE=${BOT_HANDLE}
+      - BOT_NAME=${BOT_NAME}
+      - PSABADMIN_GRP=${PSABADMIN_GRP}
     stdin_open: true 
     tty: true
     container_name: ctn_botminc
