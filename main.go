@@ -101,7 +101,7 @@ func main() {
 	defer close(cancel)
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
-	botmincock := botcore.NewTeleGBot(&botcore.BotConfig{Token: tok}, reflect.TypeOf(&botcore.SharedExpensesBot{}))
+	botmincock := botcore.NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&botcore.SharedExpensesBot{}))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -115,11 +115,11 @@ func main() {
 	}()
 	// ---------- now starting to watch periodic updates
 	// -------------------------------------------------
-	botCallouts := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	botCallouts := make(chan BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCallouts)
-	botCommands := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	botCommands := make(chan BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCommands)
-	txtMsgs := make(chan botcore.BotUpdate, MAX_COINC_UPDATES)
+	txtMsgs := make(chan BotUpdate, MAX_COINC_UPDATES)
 	defer close(txtMsgs)
 	wg.Add(1)
 	go func() {
@@ -139,6 +139,10 @@ func main() {
 	}()
 	// ----------- now setting up the thread to consume updates
 	// ---------------------------------------------------------
+	// whatever the bot action it sends back the response on this channel
+	//
+	respChn := make(chan BotResponse, MAX_COINC_UPDATES)
+	defer close(respChn)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -154,11 +158,27 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a bot command ..")
+				cmd, err := ParseBotCmd(updt, respChn)
+				if err != nil {
+					respChn <- &ErrBotResp{
+						AnyResponse: &AnyResponse{ChatId: updt.Message.Chat.Id, ReplyToMsg: updt.Message.Id},
+						Err:         fmt.Errorf("failed,ParseBotCmd: %s", err),
+						UsrMessage:  "Oops, looks like a command for me. But could not parse it- can you say that again?",
+					}
+					continue
+				}
+				log.WithFields(log.Fields{
+					"cmd"
+				}).Debug("command parsed..")
 			case updt := <-txtMsgs:
 				// parsing the updates
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a text command ..")
+			case resp := <- respChn:
+				log.WithFields(log.Fields{
+					"resp": resp
+				}).Debug("ready to send response")
 			case <-cancel:
 				return
 			}

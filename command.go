@@ -1,4 +1,4 @@
-package botcore
+package main
 
 import (
 	"fmt"
@@ -25,7 +25,6 @@ type AnyBotCmd struct {
 	MsgId    int64
 	ChatId   int64
 	SenderId int64
-	RespChn  chan BotResponse
 }
 
 // RegMeBotCmd : helps resgister the new user
@@ -38,24 +37,8 @@ type RegMeBotCmd struct {
 // Execute : will execute database connections and add a new user account into the database
 // acc_duplicate : call back to be executed in whichever database context
 // add_account : query call but being agnostic of the database context
-func (reg *RegMeBotCmd) Execute(acc_duplicate func(int64, string) bool, add_account func(int64, string, string, int) error) {
-	if acc_duplicate(reg.SenderId, reg.UserEmail) {
-		log.WithFields(log.Fields{
-			"id":    reg.SenderId,
-			"email": reg.UserEmail,
-		}).Debug("Execute: duplicate account registry")
-		reg.RespChn <- ErrBotResp{Err: fmt.Errorf("account already registered")}
-		return
-
-	}
-	// when adding a new account, telegram id, email, elevation
-	if err := add_account(reg.SenderId, reg.UserEmail, reg.FullName, 0); err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Debug("Execute: failed to add new account")
-		reg.RespChn <- ErrBotResp{Err: fmt.Errorf("failed to add new account")}
-		return
-	}
+func (reg *RegMeBotCmd) Execute() {
+	return
 }
 
 // NewCommand : from the string type of commmand this can start a new command
@@ -81,14 +64,7 @@ func NewCommand(args map[string]interface{}) (BotCommand, error) {
 		}).Debug("NewCommand: failed to read from_id, invalid datatype")
 		return nil, fmt.Errorf("invalid from_id, expected integer")
 	}
-	rchn, ok := args["resp_chn"].(chan BotResponse)
-	if !ok {
-		log.WithFields(log.Fields{
-			"chat_id": chatid,
-		}).Debug("NewCommand: failed to response channel")
-		return nil, fmt.Errorf("invalid response channel type")
-	}
-	anyCmd := &AnyBotCmd{MsgId: msgid, ChatId: chatid, SenderId: fromid, RespChn: rchn}
+	anyCmd := &AnyBotCmd{MsgId: msgid, ChatId: chatid, SenderId: fromid}
 	switch args["cmd"] {
 	case "registerme":
 		return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: args["email"].(string), FullName: args["full_name"].(string)}, nil
@@ -102,7 +78,7 @@ func NewCommand(args map[string]interface{}) (BotCommand, error) {
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
 // a command object is action, channel over to send response, and reference of the chat
-func ParseBotCmd(updt BotUpdate, respChn chan<- BotResponse) (BotCommand, error) {
+func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 	// from the update message this will parse the bot command to process
 	// bot command will also get references to the messages
 	// textual command needs to be broken down to an action that the bot can execute
@@ -122,11 +98,9 @@ func ParseBotCmd(updt BotUpdate, respChn chan<- BotResponse) (BotCommand, error)
 			cmdArgs["chat_id"] = updt.Message.Chat.Id
 			cmdArgs["from_id"] = updt.Message.From.Id
 			cmdArgs["full_name"] = fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)
-			cmdArgs["resp_chn"] = respChn
 			return NewCommand(cmdArgs)
 		}
 	}
 	//no pattern could match the message for bot - perhaps is not a command
-	log.Debug("unrecognised command, matches none of the patterns")
-	return nil, fmt.Errorf("failed to parse command ")
+	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
 }

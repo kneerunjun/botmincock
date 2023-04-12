@@ -1,4 +1,4 @@
-package botcore
+package main
 
 import "reflect"
 

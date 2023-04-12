@@ -1,12 +1,8 @@
-package botcore
+package main
 
 import (
 	"fmt"
 	"reflect"
-)
-
-const (
-	MAX_COINC_UPDATES = 20
 )
 
 type Bot interface {
