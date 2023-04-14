@@ -12,8 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/kneerunjun/botmincock/botcore"
-
 	log "github.com/sirupsen/logrus"
 )
 
@@ -101,7 +99,7 @@ func main() {
 	defer close(cancel)
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
-	botmincock := botcore.NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&botcore.SharedExpensesBot{}))
+	botmincock := NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&SharedExpensesBot{}))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -128,14 +126,14 @@ func main() {
 		// as the filters execute in sequence, the update message is tested for type
 		// once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
 		// a filter can also abort the testing of subsequent filters
-		filters := []botcore.BotUpdtFilter{
-			&botcore.GrpConvFilter{PassChn: nil},
-			&botcore.NonZeroIDFilter{PassChn: nil},
-			&botcore.BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
-			&botcore.BotCalloutFilter{PassChn: botCallouts},
-			&botcore.TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
+		filters := []BotUpdtFilter{
+			&GrpConvFilter{PassChn: nil},
+			&NonZeroIDFilter{PassChn: nil},
+			&BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
+			&BotCalloutFilter{PassChn: botCallouts},
+			&TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
 		}
-		botcore.WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
+		WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
 	}()
 	// ----------- now setting up the thread to consume updates
 	// ---------------------------------------------------------
@@ -154,30 +152,16 @@ func main() {
 					"text": updt.Message.Text,
 				}).Debug("Received a bot callout ..")
 			case updt := <-botCommands:
-				// parsing the updates
-				log.WithFields(log.Fields{
-					"text": updt.Message.Text,
-				}).Debug("Received a bot command ..")
-				cmd, err := ParseBotCmd(updt, respChn)
-				if err != nil {
-					respChn <- &ErrBotResp{
-						AnyResponse: &AnyResponse{ChatId: updt.Message.Chat.Id, ReplyToMsg: updt.Message.Id},
-						Err:         fmt.Errorf("failed,ParseBotCmd: %s", err),
-						UsrMessage:  "Oops, looks like a command for me. But could not parse it- can you say that again?",
-					}
-					continue
-				}
-				log.WithFields(log.Fields{
-					"cmd"
-				}).Debug("command parsed..")
+				// handling bot commands on separate coroutine
+				go HandleCommand(cancel, updt, respChn)
 			case updt := <-txtMsgs:
 				// parsing the updates
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a text command ..")
-			case resp := <- respChn:
+			case resp := <-respChn:
 				log.WithFields(log.Fields{
-					"resp": resp
+					"resp": resp,
 				}).Debug("ready to send response")
 			case <-cancel:
 				return

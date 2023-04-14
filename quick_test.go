@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"regexp"
 	"testing"
 
@@ -32,6 +33,81 @@ func TestRegMeCommand(t *testing.T) {
 		t.Log(result)
 	}
 
+}
+
+// TestParseCommand : parse command is crucial when it comes to translating textual command to a command in botmincock
+func TestParseCommand(t *testing.T) {
+	// after the bot update has been recognised as a command it may be due to parse the command
+	// here we test such commands on the bot
+	t.Setenv("BOT_HANDLE", "@psabadminton_bot") // only for the purposes of testing
+	testOkData := []string{
+		"@psabadminton_bot /registerme kneerunjun@gmail.com",
+		"@psabadminton_bot /registerme kneerunjun@gmail.co",
+		"@psabadminton_bot /registerme someone@yahoo.co",
+		"@psabadminton_bot /registerme someone@yahoo.co1",
+		"@psabadminton_bot /registerme someon_1e@yahoo.co1",
+		"@psabadminton_bot /registerme som.eon_1e@yahoo.co1",
+	}
+
+	for _, d := range testOkData {
+		t.Logf("Now testing for the message \n %s", d)
+		updt := map[string]interface{}{
+			"id": 343435,
+			"message": map[string]interface{}{
+				"id":   43535,
+				"text": d,
+				"from": map[string]interface{}{
+					"id":         543676857,
+					"username":   "NiruAwati",
+					"first_name": "Niranjan",
+					"last_name":  "Awati",
+				},
+				"chat": map[string]interface{}{
+					"id": 100923298,
+				},
+			},
+		}
+		byt, _ := json.Marshal(updt)
+		bupdt := BotUpdate{}
+		json.Unmarshal(byt, &bupdt)
+		cmd, err := ParseBotCmd(bupdt)
+		assert.Nil(t, err, "Unexpected error when parsing bot commnd")
+		assert.NotNil(t, cmd, "Unexpected nil command")
+
+	}
+	testErrData := []string{
+		"/registerme kneerunjun@gmail.com",             // missing bot callout
+		"@psabadminton_bot /registerme",                // missing email for registration
+		"@psabadminton_bot /register someone@yahoo.co", // command mispelt
+	}
+	for _, d := range testErrData {
+		t.Logf("Now testing for the message \n %s", d)
+		updt := map[string]interface{}{
+			"id": 343435,
+			"message": map[string]interface{}{
+				"id":   43535,
+				"text": d,
+				"from": map[string]interface{}{
+					"id":         543676857,
+					"username":   "NiruAwati",
+					"first_name": "Niranjan",
+					"last_name":  "Awati",
+				},
+				"chat": map[string]interface{}{
+					"id": 100923298,
+				},
+			},
+		}
+		byt, _ := json.Marshal(updt)
+		bupdt := BotUpdate{}
+		json.Unmarshal(byt, &bupdt)
+		_, err := ParseBotCmd(bupdt)
+		assert.NotNil(t, err, "Unexpected nil error when parsing invalid command")
+
+	}
+	t.Cleanup(func() {
+		t.Log("Exiting the test")
+	})
 }
 
 func TestGMText(t *testing.T) {

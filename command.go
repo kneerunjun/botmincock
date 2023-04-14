@@ -1,6 +1,15 @@
 package main
 
+/* ==================================
+author 		: kneerunjun@gmail.com
+time		: April 2023
+project		: botmincock
+Bots often receive commands that are specifically targetted for a bot action.
+Bots identify the text and form objects that represent the command which can be executed
+Commands when executed beget response which then can be sent over by the bot in the intended chats
+====================================*/
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"regexp"
@@ -8,72 +17,77 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-var (
-	botCmnds = []*regexp.Regexp{
-		// user trying to register self
-		regexp.MustCompile(fmt.Sprintf(`^@%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
-	}
-)
-
 // BotCommand : Any command that can execute and send back a BotResponse
 type BotCommand interface {
+}
+
+type Loggable interface {
+	Log()
+	AsMap() map[string]interface{}
+	AsJsonByt() []byte
 }
 
 // AnyBotCmd : essentials fr the bot command and formulate the response
 // use this to derive from in actual commands
 type AnyBotCmd struct {
-	MsgId    int64
-	ChatId   int64
-	SenderId int64
+	MsgId    int64 `json:"msg_id"`
+	ChatId   int64 `json:"chat_id"`
+	SenderId int64 `json:"from_id"`
+}
+
+func (abc *AnyBotCmd) Log() {
+	log.WithFields(log.Fields{
+		"msg_id":  abc.MsgId,
+		"chat_id": abc.ChatId,
+		"from_id": abc.SenderId,
+	}).Debug("any bot command")
+}
+
+func (abc *AnyBotCmd) AsMap() map[string]interface{} {
+	return map[string]interface{}{
+		"msg_id":  abc.MsgId,
+		"chat_id": abc.ChatId,
+		"from_id": abc.SenderId,
+	}
+}
+
+func (abc *AnyBotCmd) AsJsonByt() []byte {
+	byt, _ := json.Marshal(abc)
+	return byt
 }
 
 // RegMeBotCmd : helps resgister the new user
 type RegMeBotCmd struct {
 	*AnyBotCmd
-	UserEmail string
-	FullName  string
+	UserEmail string `json:"email"`
+	FullName  string `json:"full_name"`
+}
+
+func (rbc *RegMeBotCmd) Log() {
+	rbc.AnyBotCmd.Log()
+	log.WithFields(log.Fields{
+		"email":     rbc.UserEmail,
+		"full_name": rbc.FullName,
+	}).Debug("RegMeBotCmd")
+}
+func (rbc *RegMeBotCmd) AsMap() map[string]interface{} {
+	base := rbc.AnyBotCmd.AsMap()
+	base["email"] = rbc.UserEmail
+	base["full_name"] = rbc.FullName
+	return base
+}
+
+func (rbc *RegMeBotCmd) AsJsonByt() []byte {
+	byt, _ := json.Marshal(rbc)
+	return byt
 }
 
 // Execute : will execute database connections and add a new user account into the database
 // acc_duplicate : call back to be executed in whichever database context
 // add_account : query call but being agnostic of the database context
-func (reg *RegMeBotCmd) Execute() {
-	return
+func (reg *RegMeBotCmd) Execute() error {
+	return nil
 }
-
-// NewCommand : from the string type of commmand this can start a new command
-func NewCommand(args map[string]interface{}) (BotCommand, error) {
-	msgid, ok := args["msg_id"].(int64)
-	if !ok {
-		log.WithFields(log.Fields{
-			"msg_id": msgid,
-		}).Debug("NewCommand: failed to read msg_id, invalid datatype")
-		return nil, fmt.Errorf("invalid msg_id, expected integer")
-	}
-	chatid, ok := args["chat_id"].(int64)
-	if !ok {
-		log.WithFields(log.Fields{
-			"chat_id": chatid,
-		}).Debug("NewCommand: failed to read chat_id, invalid datatype")
-		return nil, fmt.Errorf("invalid chat_id, expected integer")
-	}
-	fromid, ok := args["from_id"].(int64)
-	if !ok {
-		log.WithFields(log.Fields{
-			"chat_id": chatid,
-		}).Debug("NewCommand: failed to read from_id, invalid datatype")
-		return nil, fmt.Errorf("invalid from_id, expected integer")
-	}
-	anyCmd := &AnyBotCmd{MsgId: msgid, ChatId: chatid, SenderId: fromid}
-	switch args["cmd"] {
-	case "registerme":
-		return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: args["email"].(string), FullName: args["full_name"].(string)}, nil
-	default:
-		return nil, fmt.Errorf("%s unavailable/empty command", args["cmd"])
-	}
-}
-
-// This has allied methods to parse the bot commands
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
@@ -83,10 +97,12 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 	// bot command will also get references to the messages
 	// textual command needs to be broken down to an action that the bot can execute
 	// reference to the original message though remains intact
+	botCmnds := []*regexp.Regexp{
+		// user trying to register self
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
+	}
 	for _, pattrn := range botCmnds {
 		if pattrn.MatchString(updt.Message.Text) {
-			log.Debug("recognised command")
-			// now to get which command
 			cmdArgs := map[string]interface{}{} // all that a command ever needs to execute and send a reponse
 			matches := pattrn.FindStringSubmatch(updt.Message.Text)
 			for i, name := range pattrn.SubexpNames() {
@@ -94,13 +110,21 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 					cmdArgs[name] = matches[i]
 				}
 			}
-			cmdArgs["msg_id"] = updt.Message.Id
-			cmdArgs["chat_id"] = updt.Message.Chat.Id
-			cmdArgs["from_id"] = updt.Message.From.Id
-			cmdArgs["full_name"] = fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)
-			return NewCommand(cmdArgs)
+			anyCmd := &AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
+			switch cmdArgs["cmd"] {
+			case "registerme":
+				return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string), FullName: fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)}, nil
+			default:
+				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
+			}
 		}
 	}
 	//no pattern could match the message for bot - perhaps is not a command
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
+}
+
+// HandleCommand : will parse and execute the command to generate a bot response
+// also cancels when the main thread collapses
+func HandleCommand(cancel chan bool, updt BotUpdate, chnResp chan BotResponse) {
+
 }
