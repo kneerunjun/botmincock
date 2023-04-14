@@ -19,6 +19,7 @@ import (
 
 // BotCommand : Any command that can execute and send back a BotResponse
 type BotCommand interface {
+	Execute() (BotResponse, error)
 }
 
 type Loggable interface {
@@ -85,8 +86,9 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 // Execute : will execute database connections and add a new user account into the database
 // acc_duplicate : call back to be executed in whichever database context
 // add_account : query call but being agnostic of the database context
-func (reg *RegMeBotCmd) Execute() error {
-	return nil
+func (reg *RegMeBotCmd) Execute() (BotResponse, error) {
+	// TODO: later in development cycle this will need to be working to register a new user to the database
+	return NewTextResponse("executed command!", reg.ChatId, reg.MsgId), nil
 }
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot
@@ -121,10 +123,4 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 	}
 	//no pattern could match the message for bot - perhaps is not a command
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
-}
-
-// HandleCommand : will parse and execute the command to generate a bot response
-// also cancels when the main thread collapses
-func HandleCommand(cancel chan bool, updt BotUpdate, chnResp chan BotResponse) {
-
 }

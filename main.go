@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -30,6 +31,7 @@ var (
 const (
 	MAX_COINC_UPDATES = 10
 	BOT_TICK_SECS     = 3 * time.Second
+	STD_REQ_TIMEOUT   = 5 * time.Second
 )
 
 func init() {
@@ -153,16 +155,49 @@ func main() {
 				}).Debug("Received a bot callout ..")
 			case updt := <-botCommands:
 				// handling bot commands on separate coroutine
-				go HandleCommand(cancel, updt, respChn)
+				go func() {
+					cmd, err := ParseBotCmd(updt)
+					if err != nil {
+						respChn <- NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
+					} else {
+						resp, err := cmd.Execute()
+						if err != nil {
+							respChn <- NewErrResponse(err, "Execute", "Oops there was an error executing the command, ask the admin to check logs", updt.Message.Chat.Id, updt.Message.Id)
+						} else {
+							respChn <- resp
+						}
+					}
+				}()
 			case updt := <-txtMsgs:
 				// parsing the updates
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a text command ..")
 			case resp := <-respChn:
-				log.WithFields(log.Fields{
-					"resp": resp,
-				}).Debug("ready to send response")
+				go func() {
+					resp.Log()
+					cl := http.Client{Timeout: STD_REQ_TIMEOUT}
+					url := fmt.Sprintf("%s%s", botmincock.UrlSendMsg(), resp.SendMsgUrl())
+					req, err := http.NewRequest("POST", url, nil)
+					if err != nil {
+						log.WithFields(log.Fields{
+							"err": err,
+						}).Error("send message request could not be created")
+					} else {
+						resp, err := cl.Do(req)
+						if err != nil {
+							log.WithFields(log.Fields{
+								"status": resp.StatusCode,
+								"err":    err,
+							}).Error("error sending message over http")
+						} else {
+							log.WithFields(log.Fields{
+								"status": resp.StatusCode,
+							}).Info("responded..")
+						}
+					}
+
+				}()
 			case <-cancel:
 				return
 			}

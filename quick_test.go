@@ -48,7 +48,7 @@ func TestParseCommand(t *testing.T) {
 		"@psabadminton_bot /registerme someon_1e@yahoo.co1",
 		"@psabadminton_bot /registerme som.eon_1e@yahoo.co1",
 	}
-
+	t.Log("now testing all postive test cases ")
 	for _, d := range testOkData {
 		t.Logf("Now testing for the message \n %s", d)
 		updt := map[string]interface{}{
@@ -75,11 +75,16 @@ func TestParseCommand(t *testing.T) {
 		assert.NotNil(t, cmd, "Unexpected nil command")
 
 	}
+	// ==============
+	// negative test data parsing such a command shall lead to error
+	// nil botcommand returned
+	// ===============
 	testErrData := []string{
 		"/registerme kneerunjun@gmail.com",             // missing bot callout
 		"@psabadminton_bot /registerme",                // missing email for registration
 		"@psabadminton_bot /register someone@yahoo.co", // command mispelt
 	}
+	t.Log("Now negative testing.. ")
 	for _, d := range testErrData {
 		t.Logf("Now testing for the message \n %s", d)
 		updt := map[string]interface{}{
@@ -103,7 +108,6 @@ func TestParseCommand(t *testing.T) {
 		json.Unmarshal(byt, &bupdt)
 		_, err := ParseBotCmd(bupdt)
 		assert.NotNil(t, err, "Unexpected nil error when parsing invalid command")
-
 	}
 	t.Cleanup(func() {
 		t.Log("Exiting the test")

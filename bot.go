@@ -9,7 +9,7 @@ type Bot interface {
 	ApplyConfig(*BotConfig) error
 	Updates() chan BotUpdate
 	Token() string
-	UrlSendMsg(int64, IReply) string // bot custome url to send message
+	UrlSendMsg() string // bot custome url to send message
 }
 
 type BotConfig struct {
@@ -44,5 +44,5 @@ func (seb *SharedExpensesBot) Token() string {
 	return seb.tok
 }
 func (seb *SharedExpensesBot) UrlSendMsg(chatid int64, reply IReply) string {
-	return fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage?chat_id=%d&text=%s", seb.tok, chatid, reply.Text())
+	return fmt.Sprintf("https://api.telegram.org/bot%s", seb.tok)
 }
