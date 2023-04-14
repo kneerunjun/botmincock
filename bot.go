@@ -43,6 +43,6 @@ func (seb *SharedExpensesBot) Updates() chan BotUpdate {
 func (seb *SharedExpensesBot) Token() string {
 	return seb.tok
 }
-func (seb *SharedExpensesBot) UrlSendMsg(chatid int64, reply IReply) string {
+func (seb *SharedExpensesBot) UrlSendMsg() string {
 	return fmt.Sprintf("https://api.telegram.org/bot%s", seb.tok)
 }

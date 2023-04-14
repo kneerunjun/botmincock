@@ -102,6 +102,9 @@ func main() {
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
 	botmincock := NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&SharedExpensesBot{}))
+	if botmincock == nil {
+		log.Fatal("failed to instantiate bot..")
+	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

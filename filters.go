@@ -40,7 +40,10 @@ func (grpcon *GrpConvFilter) Apply(updt *BotUpdate) (bool, bool) {
 	}
 	yes := grpID == updt.Message.Chat.Id
 	if !yes {
-		log.Warn("message isnt part of the PSABadminton conversation")
+		log.WithFields(log.Fields{
+			"expected": grpID,
+			"actual":updt.Message.Chat.Id,
+		}).Warn("message isnt part of the PSABadminton conversation")
 	}
 	// if its desired to never abort filter always set the channel to nil
 	return yes, (grpcon.PassChn != nil && yes)
