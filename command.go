@@ -117,6 +117,35 @@ func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
 	}
 }
 
+type MyInfoBotCmd struct {
+	*AnyBotCmd
+}
+
+func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
+	if ctx.DB != nil {
+		ua, err := GetAccOfID(info.SenderId, func(flt bson.M) (map[string]interface{}, error) {
+			resultMp := map[string]interface{}{}
+			q := ctx.DB.C(MONGO_COLL).Find(flt)
+			if c, _ := q.Count(); c == 0 {
+				// unregistered account
+				return resultMp, fmt.Errorf("unregistred account, cannot get information")
+			}
+			if err := q.One(&resultMp); err != nil {
+				// query to get the account fails
+				return resultMp, err
+			}
+			return resultMp, nil
+		})
+		if err != nil {
+			return NewErrResponse(err, "MyInfoBotCmd.Execute", "Failed to get your information, ask your admin to check for logs", info.ChatId, info.MsgId)
+		}
+		return NewTextResponse(ua.ToMsgTxt(), info.ChatId, info.MsgId)
+	} else {
+		// inavlid database connection
+		return NewErrResponse(fmt.Errorf("failed to execute command, context DB is nil"), "MyInfoBotCmd.Execute", "Couldn't get your account info as requested. Ask the admin to check the logs", info.ChatId, info.MsgId)
+	}
+}
+
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
 // a command object is action, channel over to send response, and reference of the chat
@@ -128,6 +157,7 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 	botCmnds := []*regexp.Regexp{
 		// user trying to register self
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),
 	}
 	for _, pattrn := range botCmnds {
 		if pattrn.MatchString(updt.Message.Text) {
@@ -142,6 +172,8 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 			switch cmdArgs["cmd"] {
 			case "registerme":
 				return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string), FullName: fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)}, nil
+			case "myinfo":
+				return &MyInfoBotCmd{AnyBotCmd: anyCmd}, nil
 			default:
 				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
 			}

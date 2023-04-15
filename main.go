@@ -15,7 +15,6 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
-    
 )
 
 var (
@@ -23,6 +22,7 @@ var (
 	logFile         string
 	allCommands     = []*regexp.Regexp{
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance

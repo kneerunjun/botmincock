@@ -36,17 +36,24 @@ type UserAccount struct {
 	Archived bool    `bson:"archive" json:"archive"` // default setting is false here
 }
 
+func (ua *UserAccount) ToMsgTxt() string {
+	// https://stackoverflow.com/questions/3871729/transmitting-newline-character-n
+	return fmt.Sprintf("Hi,%s%%0AYou are registered with us%%0AEmail: %s%%0ATelegramID: %d", ua.Name, ua.Email, ua.TelegID)
+}
+
 func invalid(u *UserAccount) bool {
 	if u.Name == "" || u.Email == "" || u.TelegID != int64(0) {
 		return true
 	}
 	return false
 }
-func GetAccOfID(uid string, findOneInStore func(flt bson.M) (map[string]interface{}, error)) (*UserAccount, error) {
-	if uid == "" {
-		return nil, fmt.Errorf("invalid account id to get, cannot be empty")
+func GetAccOfID(uid int64, findOneInStore func(flt bson.M) (map[string]interface{}, error)) (*UserAccount, error) {
+	if uid == int64(0) || uid < int64(0) {
+		// negative account ids signifies all the groups
+		// a group cannot have a valid account on botmincock database
+		return nil, fmt.Errorf("invalid account id to get, cannot be empty, or negative")
 	}
-	result, err := findOneInStore(bson.M{"uid": uid, "archive": false})
+	result, err := findOneInStore(bson.M{"tid": uid, "archive": false})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account")
 	}
