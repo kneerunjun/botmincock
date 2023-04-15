@@ -15,7 +15,8 @@ import (
 	"regexp"
 
 	log "github.com/sirupsen/logrus"
-	"labix.org/v2/mgo"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 const (
@@ -95,14 +96,19 @@ func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
 	// TODO: later in development cycle this will need to be working to register a new user to the database
 	if ctx.DB != nil {
 		// xecute the command here
-		if RegisterNewUser(reg.FullName, reg.UserEmail, reg.SenderId, func(obj interface{}) error {
+		err := RegisterNewUser(reg.FullName, reg.UserEmail, reg.SenderId, func(obj interface{}) error {
 			// callback that executes from within the dtabase context
-			log.WithFields(log.Fields{
-				"account": obj,
-			}).Debug("ready to insert account")
 			return ctx.DB.C(MONGO_COLL).Insert(obj)
-		}) != nil {
-			return NewErrResponse(fmt.Errorf("failed query to register new account"), "RegMeBotCmd.Execute", "Couldn't register you as requested. Ask the admin to check the logs", reg.ChatId, reg.MsgId)
+		}, func(m []bson.M) (bool, error) {
+			// checking to see the duplicate account
+			count, err := ctx.DB.C(MONGO_COLL).Find(bson.M{"$or": m}).Count()
+			if err != nil {
+				return false, err
+			}
+			return (count > 0), nil // count will determine if duplicate exists
+		})
+		if err != nil {
+			return NewErrResponse(err, "RegMeBotCmd.Execute", "Couldn't register you as requested. Either a duplicate account exists or there has been a connectivity issue. Ask the admin to check the logs", reg.ChatId, reg.MsgId)
 		}
 		return NewTextResponse("Registered account!", reg.ChatId, reg.MsgId)
 	} else {
