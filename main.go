@@ -197,12 +197,7 @@ func main() {
 					if err != nil {
 						respChn <- NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						resp, err := cmd.Execute(NewExecCtx().SetDB(mongoSession.DB(DB_NAME)))
-						if err != nil {
-							respChn <- NewErrResponse(err, "Execute", "Oops there was an error executing the command, ask the admin to check logs", updt.Message.Chat.Id, updt.Message.Id)
-						} else {
-							respChn <- resp
-						}
+						respChn <- cmd.Execute(NewExecCtx().SetDB(mongoSession.DB(DB_NAME)))
 					}
 				}()
 			case updt := <-txtMsgs:

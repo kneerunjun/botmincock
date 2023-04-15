@@ -18,9 +18,13 @@ import (
 	"labix.org/v2/mgo"
 )
 
+const (
+	MONGO_COLL = "accounts"
+)
+
 // BotCommand : Any command that can execute and send back a BotResponse
 type BotCommand interface {
-	Execute(ctx *CmdExecCtx) (BotResponse, error)
+	Execute(ctx *CmdExecCtx) BotResponse
 }
 
 type Loggable interface {
@@ -87,15 +91,24 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 // Execute : will execute database connections and add a new user account into the database
 // acc_duplicate : call back to be executed in whichever database context
 // add_account : query call but being agnostic of the database context
-func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) (BotResponse, error) {
+func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
 	// TODO: later in development cycle this will need to be working to register a new user to the database
 	if ctx.DB != nil {
 		// xecute the command here
-		return NewTextResponse("executed command!", reg.ChatId, reg.MsgId), nil
+		if RegisterNewUser(reg.FullName, reg.UserEmail, reg.SenderId, func(obj interface{}) error {
+			// callback that executes from within the dtabase context
+			log.WithFields(log.Fields{
+				"account": obj,
+			}).Debug("ready to insert account")
+			return ctx.DB.C(MONGO_COLL).Insert(obj)
+		}) != nil {
+			return NewErrResponse(fmt.Errorf("failed query to register new account"), "RegMeBotCmd.Execute", "Couldn't register you as requested. Ask the admin to check the logs", reg.ChatId, reg.MsgId)
+		}
+		return NewTextResponse("Registered account!", reg.ChatId, reg.MsgId)
 	} else {
-		return nil, fmt.Errorf("failed to execute command, context DB is nil")
+		// inavlid database connection
+		return NewErrResponse(fmt.Errorf("failed to execute command, context DB is nil"), "RegMeBotCmd.Execute", "Couldn't register you as requested. Ask the admin to check the logs", reg.ChatId, reg.MsgId)
 	}
-
 }
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot

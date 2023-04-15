@@ -1,11 +1,13 @@
 package main
+
 /* ==================================
 author 		: kneerunjun@gmail.com
 time		: April 2023
 project		: botmincock
-Bots often receive commands that are specifically targetted for a bot action.
-Bots identify the text and form objects that represent the command which can be executed
-Commands when executed beget response which then can be sent over by the bot in the intended chats
+Account objects that face the database are required
+Account objects represent objects that store the basic facts about the account
+For all other collections Account info serves as the base for getting unique ids
++ CRUD functions for the account
 ====================================*/
 import (
 	"encoding/json"
@@ -16,6 +18,7 @@ import (
 
 type AccElev uint8
 
+// Account elevation as enumeration
 const (
 	User = uint8(0) + iota
 	Manager
@@ -26,7 +29,7 @@ const (
 // refer to this to know the details of the user
 // NOTE: we arent using bson.ObjectIds here since telegID is sufficent Primary key
 type UserAccount struct {
-	TelegID  string  `bson:"tid" json:"tid"`         // telegram chat id for personal conversations, unique
+	TelegID  int64  `bson:"tid" json:"tid"`         // telegram chat id for personal conversations, unique
 	Email    string  `bson:"email" json:"email"`     // email of the user, for reports, unique
 	Name     string  `bson:"name" json:"name"`       // name for addressing the user in any conversation, unique
 	Elevtn   AccElev `bson:"elevtn" json:"elevtn"`   // priveleges for the user account 0-user, 1-manager, 2-admin, from specified enumerated values only
@@ -69,8 +72,9 @@ func DeregUser(uid string, updtStore func(flt bson.M, set bson.M) error) error {
 // RegisterNewUser : gets the details from the bot and registers a new user in the database
 // UID is generated here as 16bitunique id that can be used to universally track the user
 // Default elevation for the user when creating is 0
-func RegisterNewUser(name, tid, email string, addToStore func(obj interface{}) error) error {
-	ua := &UserAccount{Name: name, TelegID: tid, Email: email, Elevtn: AccElev(0)}
+// To start with the account is never archived i
+func RegisterNewUser(name, email string,tid int64, addToStore func(obj interface{}) error) error {
+	ua := &UserAccount{Name: name, TelegID: tid, Email: email, Elevtn: AccElev(0), Archived: false}
 	if !validate(ua) {
 		return fmt.Errorf("invalid account details, can you check and send again?")
 	}
