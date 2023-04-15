@@ -7,6 +7,10 @@ services:
         - 27017:27017
     volumes: 
       - /data/db:/data/db
+    healthcheck:
+      # NOTE: other services can only start running when this service is up and running
+      # NOTE: other services will run this test to know if this service is up
+      test: "exit 0"
     tty: true
     stdin_open: true
     container_name: ctn_store
@@ -24,6 +28,11 @@ services:
       - 8080:8080
     volumes:
       - ${LOGDIR}:${LOGDIR}
+    links:
+      - mongostore
+    depends_on:
+      mongostore:
+        condition: service_healthy
     environment: 
       - LOGF=${LOGDIR}/botmincock.log
       - GIN_MODE=${GIN_MODE}

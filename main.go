@@ -14,6 +14,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
+	"labix.org/v2/mgo"
 )
 
 var (
@@ -32,6 +33,8 @@ const (
 	MAX_COINC_UPDATES = 10
 	BOT_TICK_SECS     = 3 * time.Second
 	STD_REQ_TIMEOUT   = 5 * time.Second
+	MONGO_ADDRS       = "mongostore:27017"
+	DB_NAME           = "botmincock"
 )
 
 func init() {
@@ -81,6 +84,22 @@ func main() {
 			log.SetOutput(lf)
 		}
 	}
+	/*===============================
+	Getting the mongo connection on
+	- https://gist.github.com/345161974/4f2048f90584a64891cf07997bfd9e23
+	- after geting the handle to the session the DB is passed as execution context
+	=================================*/
+	storeDialInfo := &mgo.DialInfo{
+		Addrs:    []string{MONGO_ADDRS},
+		Timeout:  10 * time.Second,
+		Database: DB_NAME,
+	}
+	mongoSession, err := mgo.DialWithInfo(storeDialInfo)
+	if err != nil || mongoSession == nil {
+		log.Fatalf("failed to dial connection with store: %s\n", err)
+	}
+	mongoSession.SetMode(mgo.Monotonic, true)
+	log.Info("Now connected to the database..")
 	/* ============================
 	loading the secrets
 	- from files on the local repository to container secrets
@@ -102,6 +121,7 @@ func main() {
 	// Starting the bot
 	log.Info("Grab your cocks, botmincocks is coming up now..")
 	defer log.Warn("botmincock now shutting down")
+
 	/* =============================
 	Initializing the bot
 	- making the interrupt channel
@@ -177,7 +197,7 @@ func main() {
 					if err != nil {
 						respChn <- NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						resp, err := cmd.Execute()
+						resp, err := cmd.Execute(NewExecCtx().SetDB(mongoSession.DB(DB_NAME)))
 						if err != nil {
 							respChn <- NewErrResponse(err, "Execute", "Oops there was an error executing the command, ask the admin to check logs", updt.Message.Chat.Id, updt.Message.Id)
 						} else {

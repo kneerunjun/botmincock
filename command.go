@@ -15,11 +15,12 @@ import (
 	"regexp"
 
 	log "github.com/sirupsen/logrus"
+	"labix.org/v2/mgo"
 )
 
 // BotCommand : Any command that can execute and send back a BotResponse
 type BotCommand interface {
-	Execute() (BotResponse, error)
+	Execute(ctx *CmdExecCtx) (BotResponse, error)
 }
 
 type Loggable interface {
@@ -86,9 +87,15 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 // Execute : will execute database connections and add a new user account into the database
 // acc_duplicate : call back to be executed in whichever database context
 // add_account : query call but being agnostic of the database context
-func (reg *RegMeBotCmd) Execute() (BotResponse, error) {
+func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) (BotResponse, error) {
 	// TODO: later in development cycle this will need to be working to register a new user to the database
-	return NewTextResponse("executed command!", reg.ChatId, reg.MsgId), nil
+	if ctx.DB != nil {
+		// xecute the command here
+		return NewTextResponse("executed command!", reg.ChatId, reg.MsgId), nil
+	} else {
+		return nil, fmt.Errorf("failed to execute command, context DB is nil")
+	}
+
 }
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot
@@ -123,4 +130,16 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 	}
 	//no pattern could match the message for bot - perhaps is not a command
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
+}
+
+type CmdExecCtx struct {
+	DB *mgo.Database
+}
+
+func (cec *CmdExecCtx) SetDB(db *mgo.Database) *CmdExecCtx {
+	cec.DB = db
+	return cec
+}
+func NewExecCtx() *CmdExecCtx {
+	return &CmdExecCtx{}
 }
