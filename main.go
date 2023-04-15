@@ -57,9 +57,11 @@ func init() {
 }
 
 func main() {
-	/*
-		parsing command line flags and setting up log
-	*/
+	/* ======================
+	parsing command line flags and setting up log
+	- set verbose=true to change the level of logging to maximum and include all the noise
+	- set the flog=true to change the direction of logging to file instead of the terminal
+	=========================*/
 	flag.Parse() // command line flags are parsed
 	log.WithFields(log.Fields{
 		"verbose": FVerbose,
@@ -79,7 +81,11 @@ func main() {
 			log.SetOutput(lf)
 		}
 	}
-	// loading the secrets
+	/* ============================
+	loading the secrets
+	- from files on the local repository to container secrets
+	- you can store the token of the bot here
+	===============================*/
 	f, err := os.Open("/run/secrets/token_secret")
 	if err != nil {
 		log.Fatal("failed to load bot access key, kindly check and run again")
@@ -93,9 +99,15 @@ func main() {
 	log.WithFields(log.Fields{
 		"token": tok,
 	}).Debug("bot secret token is read..")
+	// Starting the bot
 	log.Info("Grab your cocks, botmincocks is coming up now..")
 	defer log.Warn("botmincock now shutting down")
-
+	/* =============================
+	Initializing the bot
+	- making the interrupt channel
+	- creating an instance of the bot with the configuration
+	- listening for signals for interruptions
+	================================*/
 	var wg sync.WaitGroup
 	cancel := make(chan bool)
 	defer close(cancel)
@@ -116,8 +128,13 @@ func main() {
 		<-sigs
 		close(cancel)
 	}()
-	// ---------- now starting to watch periodic updates
-	// -------------------------------------------------
+	/* ====================
+	now starting to watch periodic updates
+	- list of filters
+	- as the filters execute in sequence, the update message is tested for type
+	- once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
+	- a filter can also abort the testing of subsequent filters, typically when it has found content that is relevant to it
+	=======================*/
 	botCallouts := make(chan BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCallouts)
 	botCommands := make(chan BotUpdate, MAX_COINC_UPDATES)
@@ -127,10 +144,6 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		// TODO: each filter shall have a dedicated channel that it shall dispatch the update to
-		// as the filters execute in sequence, the update message is tested for type
-		// once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
-		// a filter can also abort the testing of subsequent filters
 		filters := []BotUpdtFilter{
 			&GrpConvFilter{PassChn: nil},
 			&NonZeroIDFilter{PassChn: nil},
@@ -156,6 +169,7 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a bot callout ..")
+				respChn <- NewTextResponse("Thats whats called as a bot callout.. tag me and I see that as an opportunity to serve you", updt.Message.Chat.Id, updt.Message.Id)
 			case updt := <-botCommands:
 				// handling bot commands on separate coroutine
 				go func() {
@@ -176,6 +190,7 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a text command ..")
+				respChn <- NewTextResponse("Thats a text command. Certain text I can recognise as commands for me", updt.Message.Chat.Id, updt.Message.Id)
 			case resp := <-respChn:
 				go func() {
 					resp.Log()
