@@ -21,8 +21,9 @@ var (
 	FVerbose, FLogF bool
 	logFile         string
 	allCommands     = []*regexp.Regexp{
-		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
-		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))), // register new user
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>editme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),     // email edit
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),                                             // getting user info
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance
@@ -194,7 +195,7 @@ func main() {
 			case updt := <-botCommands:
 				// handling bot commands on separate coroutine
 				go func() {
-					cmd, err := ParseBotCmd(updt)
+					cmd, err := ParseBotCmd(updt, allCommands)
 					if err != nil {
 						respChn <- NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {

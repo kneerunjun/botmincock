@@ -11,7 +11,6 @@ Commands when executed beget response which then can be sent over by the bot in 
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"regexp"
 
 	log "github.com/sirupsen/logrus"
@@ -146,19 +145,49 @@ func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
 	}
 }
 
+// EditMeBotCmd : Account when registered is with a email id
+// email address associated with the account can be changed
+// Command will update the email address of the account and send back the info of the account that has been altered
+type EditMeBotCmd struct {
+	*AnyBotCmd
+	UserEmail string
+}
+
+func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) BotResponse {
+	if ctx.DB != nil {
+		ua, err := PatchAccofID(edit.SenderId, edit.UserEmail, func(flt, patch bson.M) (map[string]interface{}, error) {
+			if c, err := ctx.DB.C(MONGO_COLL).Find(flt).Count(); c == 0 {
+				// Account to update could not be found
+				return nil, fmt.Errorf("failed to find account to update: %s", err)
+			}
+			if err := ctx.DB.C(MONGO_COLL).Update(flt, patch); err != nil {
+				// query fail
+				return nil, fmt.Errorf("failed update query %s", err)
+			}
+			result := map[string]interface{}{}
+			if err := ctx.DB.C(MONGO_COLL).Find(flt).One(&result); err != nil {
+				return nil, fmt.Errorf("failed to get updated account %s", err)
+			}
+			return result, nil
+		})
+		if err !=nil{
+			return NewErrResponse(err, "EditMeBotCmd.Execute", "Couldn't update your account, Request your admin to check the error logs",edit.ChatId, edit.MsgId)
+		}
+		return NewTextResponse(ua.ToMsgTxt(), edit.ChatId, edit.MsgId)
+	} else {
+		// inavlid database connection
+		return NewErrResponse(fmt.Errorf("failed to execute command, context DB is nil"), "EditMeBotCmd.Execute", "Couldn't edit account info. Ask your admin to check for error logs", edit.ChatId, edit.MsgId)
+	}
+}
+
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
 // a command object is action, channel over to send response, and reference of the chat
-func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
+func ParseBotCmd(updt BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
 	// from the update message this will parse the bot command to process
 	// bot command will also get references to the messages
 	// textual command needs to be broken down to an action that the bot can execute
 	// reference to the original message though remains intact
-	botCmnds := []*regexp.Regexp{
-		// user trying to register self
-		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
-		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),
-	}
 	for _, pattrn := range botCmnds {
 		if pattrn.MatchString(updt.Message.Text) {
 			cmdArgs := map[string]interface{}{} // all that a command ever needs to execute and send a reponse
@@ -174,6 +203,8 @@ func ParseBotCmd(updt BotUpdate) (BotCommand, error) {
 				return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string), FullName: fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)}, nil
 			case "myinfo":
 				return &MyInfoBotCmd{AnyBotCmd: anyCmd}, nil
+			case "editme":
+				return &EditMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string)}, nil
 			default:
 				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
 			}

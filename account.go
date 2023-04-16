@@ -60,7 +60,7 @@ func GetAccOfID(uid int64, findOneInStore func(flt bson.M) (map[string]interface
 	byt, _ := json.Marshal(result)
 	ua := &UserAccount{}
 	if json.Unmarshal(byt, ua) != nil {
-		return nil, fmt.Errorf("account of id %s could not be read", uid)
+		return nil, fmt.Errorf("account of id %d could not be read", uid)
 	}
 	return ua, nil
 }
@@ -93,4 +93,21 @@ func RegisterNewUser(name, email string, tid int64, addToStore func(obj interfac
 	}
 	// if you are here then its time to register the account
 	return addToStore(ua) // if the callback has an error then ofcourse we send that back to the calling function
+}
+
+func PatchAccofID(id int64, email string, update func(flt, patch bson.M) (map[string]interface{}, error)) (*UserAccount, error) {
+	result, err := update(bson.M{"tid": id}, bson.M{"$set": bson.M{"email": email}})
+	if err != nil {
+		return nil, err
+	}
+	byt, err := json.Marshal(result)
+	if err != nil {
+		return nil, err
+	}
+	ua := UserAccount{}
+	err = json.Unmarshal(byt, &ua)
+	if err != nil {
+		return nil, fmt.Errorf("account of id %d could not be read", id)
+	}
+	return &ua, nil
 }
