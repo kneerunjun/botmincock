@@ -46,7 +46,15 @@ type BotUpdate struct {
 // So any time the bot goes down and comes back online again all the updates that have been fetched will not be included
 // NOTE: though if you forget to include ?offset in the url this will get all the updates all starting origin history
 func FetchBotUpdates(offset int64, bot Bot) ([]BotUpdate, error) {
-	url := fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?offset=%d", bot.Token(), offset)
+	var url string
+	if offset > 0 {
+		url = fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates?offset=%d", bot.Token(), offset)
+	} else {
+		// NOTE: this is important to make this distinction based on the offset ==0
+		// getUpdates?offset=0 will not get updates from when the server was down
+		// getUpdates will get all the updates from when the server was down, all the missed updates
+		url = fmt.Sprintf("https://api.telegram.org/bot%s/getUpdates", bot.Token())
+	}
 	cli := http.Client{Timeout: 5 * time.Second}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
