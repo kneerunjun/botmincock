@@ -24,6 +24,7 @@ var (
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))), // register new user
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>editme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),     // email edit
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),                                             // getting user info
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>deregisterme)$`, os.Getenv("BOT_HANDLE"))),                                       // archiving the user account
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance
