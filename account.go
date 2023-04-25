@@ -47,13 +47,23 @@ func invalid(u *UserAccount) bool {
 	}
 	return false
 }
+
+// live_accounts:  since the account filter is not limited to only the id, the archive parameter denotes how if the account is live/archived.
+// sends back a bson.M filter that can used in queries
+func live_accounts(uid int64) bson.M {
+	return bson.M{"tid": uid, "archive": false}
+}
+
+func archived_accounts(uid int64) bson.M {
+	return bson.M{"tid": uid, "archive": true}
+}
 func GetAccOfID(uid int64, findOneInStore func(flt bson.M) (map[string]interface{}, error)) (*UserAccount, error) {
 	if uid == int64(0) || uid < int64(0) {
 		// negative account ids signifies all the groups
 		// a group cannot have a valid account on botmincock database
 		return nil, fmt.Errorf("invalid account id to get, cannot be empty, or negative")
 	}
-	result, err := findOneInStore(bson.M{"tid": uid, "archive": false})
+	result, err := findOneInStore(live_accounts(uid))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get account")
 	}
@@ -84,6 +94,8 @@ func RegisterNewUser(name, email string, tid int64, addToStore func(obj interfac
 		return fmt.Errorf("invalid account details, can you check and send again?")
 	}
 	// for checking duplicates either account with same name or email should exists
+	// TODO: change this duplicacy check to id and email - name can be changed by the user anytime - that would lead to problems
+	
 	yes, err := duplicate([]bson.M{{"name": name}, {"email": email}})
 	if err != nil {
 		return fmt.Errorf("failed t check for account duplicacy")
@@ -91,6 +103,8 @@ func RegisterNewUser(name, email string, tid int64, addToStore func(obj interfac
 	if yes {
 		return fmt.Errorf("an account with the same name/telegram ID already registered")
 	}
+	// There has to be another check for duplicacy so as to check for account already registered but inactive
+	// in that case of duplicacy the account only needs to be un-archived back
 	// if you are here then its time to register the account
 	return addToStore(ua) // if the callback has an error then ofcourse we send that back to the calling function
 }
