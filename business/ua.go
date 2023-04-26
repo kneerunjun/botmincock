@@ -65,11 +65,11 @@ func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
 // ElevateAccount : comes in handy when an account has to be promoted in role
 func ElevateAccount(ua *UserAccount, iadp DbAdaptor) error {
 	if !duplicate_account(ua) {
-		return fmt.Errorf("Account %s %d could not be found registered", ua.Email, ua.TelegID)
+		return fmt.Errorf("account %s %d could not be found registered", ua.Email, ua.TelegID)
 	}
 	if ua.Elevtn < AccElev(User) && ua.Elevtn > AccElev(Admin) {
 		// has to be between permissible limits
-		return fmt.Errorf("Requested account elevation is invalid, Has to be between [%d,%d]", User, Admin)
+		return fmt.Errorf("requested account elevation is invalid, Has to be between [%d,%d]", User, Admin)
 	}
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Elevtn: ua.Elevtn}); err != nil {
 		return fmt.Errorf("failed query to update  account %d: %s", ua.TelegID, err)
