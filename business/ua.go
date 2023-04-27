@@ -36,8 +36,8 @@ func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &duplicate); err != nil {
 		return fmt.Errorf("error checking for account duplicate %d: %s", ua.TelegID, err)
 	}
-	if duplicate != 0 {
-		return fmt.Errorf("account with id %d already registered", ua.TelegID)
+	if duplicate == 0 {
+		return fmt.Errorf("account with same id %d already registered", ua.TelegID)
 	}
 	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: false}, &duplicate); err != nil {
 		return fmt.Errorf("error checking for account duplicate %d: %s", ua.TelegID, err)
