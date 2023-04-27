@@ -1,5 +1,14 @@
 package business
 
+/* ==================================
+author 		: kneerunjun@gmail.com
+time		: April 2023
+project		: botmincock
+Domain logic behind the user account implemented here
+Once the account is regisetred it has some basic maintenance tasks
+All the functions here talk to interfaces and the models
+====================================*/
+
 import (
 	"fmt"
 	"reflect"
@@ -7,9 +16,10 @@ import (
 )
 
 var (
-	REGX_EMAIL = regexp.MustCompile("^$")
+	REGX_EMAIL = regexp.MustCompile(`^[\w\d._]+@[\w]+.[\w\d]+$`)
 )
 
+// DbAdaptor : Agnostic of the database platform this can
 type DbAdaptor interface {
 	AddOne(interface{}) error
 	RemoveOne(interface{}) error
@@ -125,6 +135,9 @@ func UpdateAccountEmail(ua *UserAccount, iadp DbAdaptor) error {
 	return nil
 }
 
+// DeregisterAccount :  flagging the account as archived
+// Account information is never deleted since there is financial information connected to the account
+// account is marked archived only to omit it from all other searches and operations
 func DeregisterAccount(ua *UserAccount, iadp DbAdaptor) error {
 	exists := 0
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists)
