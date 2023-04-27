@@ -22,10 +22,6 @@ func valid_account(ua *UserAccount) bool {
 	return true
 }
 
-func duplicate_account(ua *UserAccount) bool {
-	return false
-}
-
 // RegisterNewAccount: checks for the account duplicates, validates the account values and then just pushes that to the database
 // Any account when registered new will be marked archived = false
 // any account when registered new will have elevation =0
@@ -34,12 +30,20 @@ func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
 	if !valid_account(ua) {
 		return fmt.Errorf("account %s isnt a valid account", ua.Email)
 	}
+	// Checking to see if live accounts with the same teled id already registered
+	// either accont with same telegid  or the email can cause the duplicate flag to be raised
 	duplicate := 0
-	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID}, &duplicate); err != nil {
+	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &duplicate); err != nil {
 		return fmt.Errorf("error checking for account duplicate %d: %s", ua.TelegID, err)
 	}
 	if duplicate != 0 {
 		return fmt.Errorf("account with id %d already registered", ua.TelegID)
+	}
+	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: false}, &duplicate); err != nil {
+		return fmt.Errorf("error checking for account duplicate %d: %s", ua.TelegID, err)
+	}
+	if duplicate != 0 {
+		return fmt.Errorf("account with email %s already registered", ua.Email)
 	}
 	archived := 0
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: true}, &archived); err != nil {
@@ -63,29 +67,47 @@ func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
 }
 
 // ElevateAccount : comes in handy when an account has to be promoted in role
+// sends back the account details after having elevated it
+// Errors incase: account does not exists,requested elevation not within limits,query to update account fails,query to get the updated account details fails
 func ElevateAccount(ua *UserAccount, iadp DbAdaptor) error {
-	if !duplicate_account(ua) {
-		return fmt.Errorf("account %s %d could not be found registered", ua.Email, ua.TelegID)
+	// Checking to see if account with same telegid exists and is not archived
+	exists := 0
+	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists); err != nil {
+		return fmt.Errorf("error checking for account duplicate %d: %s", ua.TelegID, err)
+	}
+	if exists == 0 {
+		// account does not exists - error
+		return fmt.Errorf("account not found registered  %d", ua.TelegID)
 	}
 	if ua.Elevtn < AccElev(User) && ua.Elevtn > AccElev(Admin) {
 		// has to be between permissible limits
 		return fmt.Errorf("requested account elevation is invalid, Has to be between [%d,%d]", User, Admin)
 	}
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Elevtn: ua.Elevtn}); err != nil {
+		// query error with adaptor, query has failed
 		return fmt.Errorf("failed query to update  account %d: %s", ua.TelegID, err)
 	}
+	// getting the updated account details
 	updated, err := iadp.GetOne(&UserAccount{TelegID: ua.TelegID}, reflect.TypeOf(&UserAccount{}))
 	if err != nil {
 		return fmt.Errorf("failed query to get account %d: %s", ua.TelegID, err)
 	}
+	// sending the updated account detatils
 	x, _ := updated.(*UserAccount)
 	*ua = *x
 	return nil
 }
 
+// UpdateAccountEmail: changes the email attached to the account
+// Errors when account not found registered
 func UpdateAccountEmail(ua *UserAccount, iadp DbAdaptor) error {
-	if !duplicate_account(ua) {
-		return fmt.Errorf("account %s %d could not be found registered", ua.Email, ua.TelegID)
+	exists := 0
+	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists)
+	if err != nil {
+		return fmt.Errorf("failed to check if the account is registered %d", ua.TelegID)
+	}
+	if exists == 0 {
+		return fmt.Errorf("no account %d found registered", ua.TelegID)
 	}
 	if ua.Email == "" || !REGX_EMAIL.MatchString(ua.Email) {
 		// has to be between permissible limits
@@ -104,8 +126,13 @@ func UpdateAccountEmail(ua *UserAccount, iadp DbAdaptor) error {
 }
 
 func DeregisterAccount(ua *UserAccount, iadp DbAdaptor) error {
-	if !duplicate_account(ua) {
-		return fmt.Errorf("account %d could not be found registered", ua.TelegID)
+	exists := 0
+	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists)
+	if err != nil {
+		return fmt.Errorf("failed to check if the account is registered %d", ua.TelegID)
+	}
+	if exists == 0 {
+		return fmt.Errorf("no account %d found registered", ua.TelegID)
 	}
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Archived: true}); err != nil {
 		return fmt.Errorf("failed query to update  account %d: %s", ua.TelegID, err)
