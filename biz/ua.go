@@ -13,6 +13,8 @@ import (
 	"fmt"
 	"reflect"
 	"regexp"
+
+	"github.com/kneerunjun/botmincock/dbadp"
 )
 
 // Set of standard user messages that can be reused in multiple locations in the business functions
@@ -28,26 +30,14 @@ var (
 	REGX_EMAIL = regexp.MustCompile(`^[\w\d._]+@[\w]+.[\w\d]+$`)
 )
 
-// DbAdaptor : Agnostic of the database platform this can
-type DbAdaptor interface {
-	AddOne(interface{}) error
-	RemoveOne(interface{}) error
-	UpdateOne(interface{}) error
-	GetOne(interface{}, reflect.Type) (interface{}, error)
-	GetCount(interface{}, *int) error
-}
-
-func valid_account(ua *UserAccount) bool {
-	return true
-}
-
 // RegisterNewAccount: checks for the account duplicates, validates the account values and then just pushes that to the database
 // Any account when registered new will be marked archived = false
 // any account when registered new will have elevation =0
 // Icnase of already registered account but archived its re-enabled
-func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
-	if !valid_account(ua) {
-		return fmt.Errorf("account %s isnt a valid account", ua.Email)
+func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	if ua == nil || !REGX_EMAIL.MatchString(ua.Email) || ua.Name == "" {
+		// just a prelim check on account fields
+		return NewDomainError(fmt.Errorf("account %s isnt a valid account", ua.Email), nil).SetLoc("RegisterNewAccount").SetUsrMsg(INVLD_PARAM)
 	}
 	// Checking to see if live accounts with the same teled id already registered
 	// either accont with same telegid  or the email can cause the duplicate flag to be raised
@@ -88,7 +78,7 @@ func RegisterNewAccount(ua *UserAccount, iadp DbAdaptor) error {
 // ElevateAccount : comes in handy when an account has to be promoted in role
 // sends back the account details after having elevated it
 // Errors incase: account does not exists,requested elevation not within limits,query to update account fails,query to get the updated account details fails
-func ElevateAccount(ua *UserAccount, iadp DbAdaptor) error {
+func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	// Checking to see if account with same telegid exists and is not archived
 	exists := 0
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists); err != nil {
@@ -119,7 +109,7 @@ func ElevateAccount(ua *UserAccount, iadp DbAdaptor) error {
 
 // UpdateAccountEmail: changes the email attached to the account
 // Errors when account not found registered
-func UpdateAccountEmail(ua *UserAccount, iadp DbAdaptor) error {
+func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	exists := 0
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists)
 	if err != nil {
@@ -147,7 +137,7 @@ func UpdateAccountEmail(ua *UserAccount, iadp DbAdaptor) error {
 // DeregisterAccount :  flagging the account as archived
 // Account information is never deleted since there is financial information connected to the account
 // account is marked archived only to omit it from all other searches and operations
-func DeregisterAccount(ua *UserAccount, iadp DbAdaptor) error {
+func DeregisterAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	exists := 0
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &exists)
 	if err != nil {

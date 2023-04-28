@@ -7,6 +7,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestRegisterAccount(t *testing.T) {
+
+}
+
 func TestEmailRegx(t *testing.T) {
 	data := []string{
 		"bdensumbe0@youku.com",
