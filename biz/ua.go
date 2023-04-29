@@ -61,7 +61,7 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	if archived != 0 {
 		// this means the account just needs re-enablement and not registration
 		// this happens with updating the email id as well.
-		if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Archived: false, Email: ua.Email}); err != nil {
+		if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: false, Email: ua.Email}); err != nil {
 			return NewDomainError(fmt.Errorf("failed to re-enabled the account %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 		}
 		return NewDomainError(fmt.Errorf("user account %d was found already registered, but was archived. Re-enabled it", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(ACC_REACTIVE)
@@ -92,7 +92,7 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		// has to be between permissible limits
 		return NewDomainError(fmt.Errorf("requested account elevation is invalid %d", ua.Elevtn), nil).SetLoc("ElevateAccount").SetUsrMsg(INVLD_PARAM)
 	}
-	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Elevtn: ua.Elevtn}); err != nil {
+	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Elevtn: ua.Elevtn}); err != nil {
 		// query error with adaptor, query has failed
 		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("ElevateAccount").SetUsrMsg(TRY_AGAIN)
 	}
@@ -122,7 +122,7 @@ func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		// has to be between permissible limits
 		return NewDomainError(fmt.Errorf("requested account email is invalid"), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
 	}
-	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Email: ua.Email}); err != nil {
+	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Email: ua.Email}); err != nil {
 		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("UpdateAccountEmail").SetUsrMsg(TRY_AGAIN)
 	}
 	updated, err := iadp.GetOne(&UserAccount{TelegID: ua.TelegID}, reflect.TypeOf(&UserAccount{}))
@@ -146,7 +146,7 @@ func DeregisterAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	if exists == 0 {
 		return NewDomainError(fmt.Errorf("no account %d found registered", ua.TelegID), nil).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
 	}
-	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID, Archived: true}); err != nil {
+	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: true}); err != nil {
 		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	return nil
