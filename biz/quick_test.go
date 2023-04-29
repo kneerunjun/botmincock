@@ -3,9 +3,18 @@ package biz
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/kneerunjun/botmincock/dbadp"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	TEST_MONGO_HOST = "localhost:27017"
+	TEST_MONGO_DB   = "botmincock_test"
+	TEST_MONGO_COLL = "accounts"
 )
 
 func TestRegisterAccount(t *testing.T) {
@@ -16,7 +25,7 @@ func TestRegisterAccount(t *testing.T) {
 		{TelegID: 5435347, Email: "ekornousek2@apple.com", Name: "Elyssa Kornousek"},
 	}
 	for _, d := range dataOk {
-		err := RegisterNewAccount(d, &dbadp.DummyAdaptor{DummyCount: 0})
+		err := RegisterNewAccount(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
 		assert.Nil(t, err, "Unexpected error when registering new account")
 	}
 	// TEST: dummy count =1 hence the account being registered is duplicate
@@ -32,8 +41,32 @@ func TestRegisterAccount(t *testing.T) {
 	}
 	for _, d := range dataNotOk {
 		err := RegisterNewAccount(d, &dbadp.DummyAdaptor{DummyCount: 0})
-		assert.NotNil(t, err, "Unexpected error when registering new account")
+		assert.NotNil(t, err, "Unexpected nil error when registering new account")
 	}
+
+	// TEST:  testing for duplicate accounts
+	dataDuplicate := []*UserAccount{
+		{TelegID: 5435345, Email: "cayce0@bbb.org", Name: "Conrado Ayce"},
+		{TelegID: 5435348, Email: "rscimoni1@paypal.com", Name: "Reagen Scimon"}, // email is repeated
+		{TelegID: 5435347, Email: "ekornousek2@apple.com", Name: "Elyssa Kornousek"},
+	}
+	for _, d := range dataDuplicate {
+		err := RegisterNewAccount(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
+		assert.NotNil(t, err, "Unexpected nil error when registering new account")
+	}
+	// TEST: testing for archived accounts - does it re-register the acocunt
+	t.Log("Now testing to see if archived accounts are re-enabled")
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C(TEST_MONGO_COLL)
+	coll.Update(&UserAccount{TelegID: dataOk[0].TelegID}, bson.M{"$set": &UserAccount{Archived: true}})
+	err := RegisterNewAccount(dataOk[0], dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
+	assert.NotNil(t, err, "Unexpected nil error when registering archived account")
+	// cleaning up the test
+	coll.RemoveAll(bson.M{})
 }
 
 func TestEmailRegx(t *testing.T) {

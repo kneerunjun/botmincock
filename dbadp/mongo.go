@@ -4,13 +4,14 @@ package dbadp
 author 		: kneerunjun@gmail.com
 time		: April 2023
 project		: botmincock
-For the purpose of usint testing other packages that want to be agnostic of the logic thats implemented here on the database adaptor we implement a facade of a adaptor
+- Adaptors specific implementation for mongo as a service
 ====================================*/
 import (
 	"reflect"
 	"time"
 
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 // mongoAdaptor : database adaptor for mongo specific implementation
@@ -27,7 +28,7 @@ func (ma *mongoAdaptor) RemoveOne(m interface{}) error {
 }
 
 func (ma *mongoAdaptor) UpdateOne(selectr, patch interface{}) error {
-	return ma.Update(selectr, patch)
+	return ma.Update(selectr, bson.M{"$set": patch})
 }
 
 func (ma *mongoAdaptor) GetOne(m interface{}, t reflect.Type) (interface{}, error) {
@@ -40,6 +41,9 @@ func (ma *mongoAdaptor) GetOne(m interface{}, t reflect.Type) (interface{}, erro
 }
 
 func (ma *mongoAdaptor) GetCount(m interface{}, c *int) error {
+	// byt, _ := bson.Marshal(m)
+	// flt := bson.M{}
+	// bson.Unmarshal(byt, &flt)
 	count, err := ma.Find(m).Count()
 	if err != nil {
 		return err

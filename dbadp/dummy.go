@@ -22,7 +22,7 @@ func (da *DummyAdaptor) AddOne(interface{}) error {
 func (da *DummyAdaptor) RemoveOne(interface{}) error {
 	return nil
 }
-func (da *DummyAdaptor) UpdateOne(interface{}) error {
+func (da *DummyAdaptor) UpdateOne(interface{}, interface{}) error {
 	return nil
 }
 func (da *DummyAdaptor) GetOne(interface{}, reflect.Type) (interface{}, error) {

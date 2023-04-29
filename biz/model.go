@@ -28,11 +28,15 @@ const (
 // refer to this to know the details of the user
 // NOTE: we arent using bson.ObjectIds here since telegID is sufficent Primary key
 type UserAccount struct {
-	TelegID  int64   `bson:"tid" json:"tid"`         // telegram chat id for personal conversations, unique
-	Email    string  `bson:"email" json:"email"`     // email of the user, for reports, unique
-	Name     string  `bson:"name" json:"name"`       // name for addressing the user in any conversation, unique
-	Elevtn   AccElev `bson:"elevtn" json:"elevtn"`   // priveleges for the user account 0-user, 1-manager, 2-admin, from specified enumerated values only
-	Archived bool    `bson:"archive" json:"archive"` // default setting is false here
+	// IMP: the omitempty is important since when the object is passed into mongo as filters partially filled.
+	// All the fields that have 0 / empty values to them would be omitted when  marshalling to bson
+	// it is then easy to confuse the default value and the set value (if they are same). Omit empty will actually leave it out
+	// Hence we then take it to be pointer to datatypes
+	TelegID  int64    `bson:"tid,omitempty" json:"tid"`         // telegram chat id for personal conversations, unique
+	Email    string   `bson:"email,omitempty" json:"email"`     // email of the user, for reports, unique
+	Name     string   `bson:"name,omitempty" json:"name"`       // name for addressing the user in any conversation, unique
+	Elevtn   *AccElev `bson:"elevtn,omitempty" json:"elevtn"`   // priveleges for the user account 0-user, 1-manager, 2-admin, from specified enumerated values only
+	Archived *bool    `bson:"archive,omitempty" json:"archive"` // default setting is false here
 }
 
 func (ua *UserAccount) ToMsgTxt() string {
