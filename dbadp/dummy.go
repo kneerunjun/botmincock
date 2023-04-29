@@ -9,6 +9,11 @@ For the purpose of usint testing other packages that want to be agnostic of the 
 import "reflect"
 
 type DummyAdaptor struct {
+	DummyCount  int
+	AddError    error
+	RemoveError error
+	UpdateError error
+	GetOneError error
 }
 
 func (da *DummyAdaptor) AddOne(interface{}) error {
@@ -23,6 +28,7 @@ func (da *DummyAdaptor) UpdateOne(interface{}) error {
 func (da *DummyAdaptor) GetOne(interface{}, reflect.Type) (interface{}, error) {
 	return nil, nil
 }
-func (da *DummyAdaptor) GetCount(interface{}, *int) error {
+func (da *DummyAdaptor) GetCount(o interface{}, c *int) error {
+	*c = da.DummyCount
 	return nil
 }

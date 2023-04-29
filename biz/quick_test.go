@@ -4,11 +4,36 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/kneerunjun/botmincock/dbadp"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRegisterAccount(t *testing.T) {
-
+	// TEST: happy test, no error
+	dataOk := []*UserAccount{
+		{TelegID: 5435345, Email: "cayce0@bbb.org", Name: "Conrado Ayce"},
+		{TelegID: 5435346, Email: "rscimoni1@paypal.com", Name: "Reagen Scimon"},
+		{TelegID: 5435347, Email: "ekornousek2@apple.com", Name: "Elyssa Kornousek"},
+	}
+	for _, d := range dataOk {
+		err := RegisterNewAccount(d, &dbadp.DummyAdaptor{DummyCount: 0})
+		assert.Nil(t, err, "Unexpected error when registering new account")
+	}
+	// TEST: dummy count =1 hence the account being registered is duplicate
+	for _, d := range dataOk {
+		err := RegisterNewAccount(d, &dbadp.DummyAdaptor{DummyCount: 1})
+		assert.NotNil(t, err, "Unexpected error when registering new account")
+	}
+	// TEST: email of the account being registered isnt valid
+	dataNotOk := []*UserAccount{
+		{TelegID: 5435345, Email: "cayce0@bbb.org.cm", Name: "Conrado Ayce"},
+		{TelegID: 5435346, Email: "rsci%^$%^moni1@paypal.com", Name: "Reagen Scimon"},
+		{TelegID: 5435347, Email: "@apple.com", Name: "Elyssa Kornousek"},
+	}
+	for _, d := range dataNotOk {
+		err := RegisterNewAccount(d, &dbadp.DummyAdaptor{DummyCount: 0})
+		assert.NotNil(t, err, "Unexpected error when registering new account")
+	}
 }
 
 func TestEmailRegx(t *testing.T) {

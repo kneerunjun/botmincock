@@ -19,7 +19,7 @@ import (
 
 // Set of standard user messages that can be reused in multiple locations in the business functions
 const (
-	TRY_AGAIN    = "Yikes! your command did not work as expected.Try to run again after a while,or if the problem persists kindly contact a sys-admin"
+	TRY_AGAIN    = "Yikes! your command did not work as expected.Try to run again after a while,or if the problem persists kindly contact a sys-admin."
 	DUPL_ACC     = "Account with same ID or email is already registered & active. Cannot register again."
 	ACC_REACTIVE = "Account with same ID found archived. Reactivated the account."
 	ACC_MISSN    = "Account you referring to does not exists. Please register first then try again."
@@ -45,7 +45,7 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &duplicate); err != nil {
 		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 	}
-	if duplicate == 0 {
+	if duplicate != 0 {
 		return NewDomainError(fmt.Errorf("account with same id %d already registered", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(DUPL_ACC)
 	}
 	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: false}, &duplicate); err != nil {
