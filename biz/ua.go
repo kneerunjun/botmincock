@@ -42,7 +42,8 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	// Checking to see if live accounts with the same teled id already registered
 	// either accont with same telegid  or the email can cause the duplicate flag to be raised
 	duplicate := 0
-	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: false}, &duplicate); err != nil {
+	archive := false
+	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &duplicate); err != nil {
 		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	if duplicate != 0 {
