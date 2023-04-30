@@ -62,7 +62,8 @@ func TestRegisterAccount(t *testing.T) {
 		Database: TEST_MONGO_DB,
 	})
 	coll := sess.DB("").C(TEST_MONGO_COLL)
-	coll.Update(&UserAccount{TelegID: dataOk[0].TelegID}, bson.M{"$set": &UserAccount{Archived: true}})
+	archive := true
+	coll.Update(&UserAccount{TelegID: dataOk[0].TelegID}, bson.M{"$set": &UserAccount{Archived: &archive}})
 	err := RegisterNewAccount(dataOk[0], dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
 	assert.NotNil(t, err, "Unexpected nil error when registering archived account")
 	// cleaning up the test
