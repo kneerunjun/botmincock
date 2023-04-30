@@ -49,27 +49,30 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	if duplicate != 0 {
 		return NewDomainError(fmt.Errorf("account with same id %d already registered", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(DUPL_ACC)
 	}
-	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: false}, &duplicate); err != nil {
+	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: &archive}, &duplicate); err != nil {
 		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	if duplicate != 0 {
 		return NewDomainError(fmt.Errorf("account with email %s already registered", ua.Email), nil).SetLoc("RegisterNewAccount").SetUsrMsg(DUPL_ACC)
 	}
 	archived := 0
-	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: true}, &archived); err != nil {
+	archive = true
+	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &archived); err != nil {
 		return NewDomainError(fmt.Errorf("failed to get count of similar archived accounts %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	if archived != 0 {
 		// this means the account just needs re-enablement and not registration
 		// this happens with updating the email id as well.
-		if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: false, Email: ua.Email}); err != nil {
+		archive = false
+		if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: &archive, Email: ua.Email}); err != nil {
 			return NewDomainError(fmt.Errorf("failed to re-enabled the account %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 		}
 		return NewDomainError(fmt.Errorf("user account %d was found already registered, but was archived. Re-enabled it", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(ACC_REACTIVE)
 	}
 	// defaults when registering new account
 	ua.Elevtn = AccElev(User)
-	ua.Archived = false
+	archive = false
+	ua.Archived = &archive
 	if err := iadp.AddOne(ua); err != nil {
 		return NewDomainError(fmt.Errorf("failed: to add account %s %d", ua.Email, ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
 	}
