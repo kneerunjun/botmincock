@@ -1,4 +1,10 @@
-package main
+package updt
+
+/*====================
+Filters are sequential blocks for visitor pattern chain where an update passed thru and can be parsed to a command
+Filters help to sort the messages and send then commands, to appropriate channels
+filters can indicate if the next filter needs to execute or the visitor object has to breakaway
+====================*/
 
 import (
 	"os"
@@ -42,7 +48,7 @@ func (grpcon *GrpConvFilter) Apply(updt *BotUpdate) (bool, bool) {
 	if !yes {
 		log.WithFields(log.Fields{
 			"expected": grpID,
-			"actual":updt.Message.Chat.Id,
+			"actual":   updt.Message.Chat.Id,
 		}).Warn("message isnt part of the PSABadminton conversation")
 	}
 	// if its desired to never abort filter always set the channel to nil

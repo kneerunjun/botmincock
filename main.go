@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"reflect"
 	"regexp"
-	"sync"which 
+	"sync"
 	"syscall"
 	"time"
 
@@ -63,11 +63,13 @@ func init() {
 }
 
 func main() {
+
 	/* ======================
 	parsing command line flags and setting up log
 	- set verbose=true to change the level of logging to maximum and include all the noise
 	- set the flog=true to change the direction of logging to file instead of the terminal
 	=========================*/
+
 	flag.Parse() // command line flags are parsed
 	log.WithFields(log.Fields{
 		"verbose": FVerbose,
