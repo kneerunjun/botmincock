@@ -33,7 +33,7 @@ func (ma *mongoAdaptor) UpdateOne(selectr, patch interface{}) error {
 
 func (ma *mongoAdaptor) GetOne(m interface{}, t reflect.Type) (interface{}, error) {
 	result := reflect.New(t.Elem()).Interface()
-	err := ma.Find(m).One(&result)
+	err := ma.Find(m).One(result)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +41,10 @@ func (ma *mongoAdaptor) GetOne(m interface{}, t reflect.Type) (interface{}, erro
 }
 
 func (ma *mongoAdaptor) GetCount(m interface{}, c *int) error {
-	// byt, _ := bson.Marshal(m)
-	// flt := bson.M{}
-	// bson.Unmarshal(byt, &flt)
-	count, err := ma.Find(m).Count()
+	byt, _ := bson.Marshal(m)
+	flt := bson.M{}
+	bson.Unmarshal(byt, &flt)
+	count, err := ma.Find(flt).Count()
 	if err != nil {
 		return err
 	}

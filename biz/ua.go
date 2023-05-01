@@ -70,7 +70,8 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		return NewDomainError(fmt.Errorf("user account %d was found already registered, but was archived. Re-enabled it", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(ACC_REACTIVE)
 	}
 	// defaults when registering new account
-	ua.Elevtn = AccElev(User)
+	defaultElev := AccElev(User)
+	ua.Elevtn = &defaultElev
 	archive = false
 	ua.Archived = &archive
 	if err := iadp.AddOne(ua); err != nil {
@@ -93,7 +94,7 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		// account does not exists - error
 		return NewDomainError(fmt.Errorf("account not found registered  %d", ua.TelegID), nil).SetLoc("ElevateAccount").SetUsrMsg(ACC_MISSN)
 	}
-	if ua.Elevtn < AccElev(User) && ua.Elevtn > AccElev(Admin) {
+	if *ua.Elevtn < AccElev(User) && *ua.Elevtn > AccElev(Admin) {
 		// has to be between permissible limits
 		return NewDomainError(fmt.Errorf("requested account elevation is invalid %d", ua.Elevtn), nil).SetLoc("ElevateAccount").SetUsrMsg(INVLD_PARAM)
 	}
@@ -107,6 +108,8 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		return NewDomainError(fmt.Errorf("failed query to get account %d", ua.TelegID), err).SetLoc("ElevateAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	// sending the updated account detatils
+	// FIXME: casting this into a type - this has some problems
+	// x ==nil, while updated has the expected value
 	x, _ := updated.(*UserAccount)
 	*ua = *x
 	return nil
@@ -115,6 +118,11 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 // UpdateAccountEmail: changes the email attached to the account
 // Errors when account not found registered
 func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	if ua == nil {
+		return NewDomainError(fmt.Errorf("nil account isnt a valid account"), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+	} else if !REGX_EMAIL.MatchString(ua.Email) {
+		return NewDomainError(fmt.Errorf("account %s isnt a valid account", ua.Email), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+	}
 	exists := 0
 	archive := false
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &exists)
