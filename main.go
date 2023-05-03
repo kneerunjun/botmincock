@@ -13,6 +13,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/kneerunjun/botmincock/bot/cmd"
+	"github.com/kneerunjun/botmincock/bot/core"
+	"github.com/kneerunjun/botmincock/bot/resp"
+	"github.com/kneerunjun/botmincock/bot/updt"
+	"github.com/kneerunjun/botmincock/dbadp"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
 )
@@ -138,7 +143,7 @@ func main() {
 	defer close(cancel)
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
-	botmincock := NewTeleGBot(&BotConfig{Token: tok}, reflect.TypeOf(&SharedExpensesBot{}))
+	botmincock := core.NewTeleGBot(&core.BotConfig{Token: tok}, reflect.TypeOf(&core.SharedExpensesBot{}))
 	if botmincock == nil {
 		log.Fatal("failed to instantiate bot..")
 	}
@@ -160,29 +165,29 @@ func main() {
 	- once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
 	- a filter can also abort the testing of subsequent filters, typically when it has found content that is relevant to it
 	=======================*/
-	botCallouts := make(chan BotUpdate, MAX_COINC_UPDATES)
+	botCallouts := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCallouts)
-	botCommands := make(chan BotUpdate, MAX_COINC_UPDATES)
+	botCommands := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCommands)
-	txtMsgs := make(chan BotUpdate, MAX_COINC_UPDATES)
+	txtMsgs := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
 	defer close(txtMsgs)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		filters := []BotUpdtFilter{
-			&GrpConvFilter{PassChn: nil},
-			&NonZeroIDFilter{PassChn: nil},
-			&BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
-			&BotCalloutFilter{PassChn: botCallouts},
-			&TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
+		filters := []updt.BotUpdtFilter{
+			&updt.GrpConvFilter{PassChn: nil},
+			&updt.NonZeroIDFilter{PassChn: nil},
+			&updt.BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
+			&updt.BotCalloutFilter{PassChn: botCallouts},
+			&updt.TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
 		}
-		WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
+		updt.WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
 	}()
 	// ----------- now setting up the thread to consume updates
 	// ---------------------------------------------------------
 	// whatever the bot action it sends back the response on this channel
 	//
-	respChn := make(chan BotResponse, MAX_COINC_UPDATES)
+	respChn := make(chan resp.BotResponse, MAX_COINC_UPDATES)
 	defer close(respChn)
 	wg.Add(1)
 	go func() {
@@ -194,15 +199,15 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a bot callout ..")
-				respChn <- NewTextResponse("Thats whats called as a bot callout.. tag me and I see that as an opportunity to serve you", updt.Message.Chat.Id, updt.Message.Id)
+				respChn <- resp.NewTextResponse("Thats whats called as a bot callout.. tag me and I see that as an opportunity to serve you", updt.Message.Chat.Id, updt.Message.Id)
 			case updt := <-botCommands:
 				// handling bot commands on separate coroutine
 				go func() {
-					cmd, err := ParseBotCmd(updt, allCommands)
+					commnd, err := cmd.ParseBotCmd(updt, allCommands)
 					if err != nil {
-						respChn <- NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
+						respChn <- resp.NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						respChn <- cmd.Execute(NewExecCtx().SetDB(mongoSession.DB(DB_NAME)))
+						respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "accounts")))
 					}
 				}()
 			case updt := <-txtMsgs:
@@ -210,12 +215,12 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a text command ..")
-				respChn <- NewTextResponse("Thats a text command. Certain text I can recognise as commands for me", updt.Message.Chat.Id, updt.Message.Id)
+				respChn <- resp.NewTextResponse("Thats a text command. Certain text I can recognise as commands for me", updt.Message.Chat.Id, updt.Message.Id)
 			case resp := <-respChn:
 				go func() {
 					resp.Log()
 					cl := http.Client{Timeout: STD_REQ_TIMEOUT}
-					url := fmt.Sprintf("%s%s", botmincock.UrlSendMsg(), resp.SendMsgUrl())
+					url := fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl())
 					req, err := http.NewRequest("POST", url, nil)
 					if err != nil {
 						log.WithFields(log.Fields{

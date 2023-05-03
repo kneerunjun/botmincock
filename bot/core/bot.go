@@ -1,17 +1,14 @@
-package main
+package core
 
 import (
 	"fmt"
 	"reflect"
-
-	"github.com/kneerunjun/botmincock/bot/updt"
 )
 
 type Bot interface {
 	ApplyConfig(*BotConfig) error
-	Updates() chan updt.BotUpdate
 	Token() string
-	UrlSendMsg() string // bot custome url to send message
+	UrlBot() string // bot custome url to send message
 }
 
 type BotConfig struct {
@@ -30,8 +27,7 @@ func NewTeleGBot(config *BotConfig, ty reflect.Type) Bot {
 }
 
 type SharedExpensesBot struct {
-	updatesChn chan updt.BotUpdate
-	tok        string
+	tok string
 }
 
 func (seb *SharedExpensesBot) ApplyConfig(c *BotConfig) error {
@@ -41,17 +37,13 @@ func (seb *SharedExpensesBot) ApplyConfig(c *BotConfig) error {
 	if c.Token == "" {
 		return fmt.Errorf("invalid configuration: token cannot be nil")
 	}
-	seb.updatesChn = make(chan updt.BotUpdate, c.MaxCoincUpdates)
 	seb.tok = c.Token
 	return nil
-}
-func (seb *SharedExpensesBot) Updates() chan updt.BotUpdate {
-	return seb.updatesChn
 }
 
 func (seb *SharedExpensesBot) Token() string {
 	return seb.tok
 }
-func (seb *SharedExpensesBot) UrlSendMsg() string {
+func (seb *SharedExpensesBot) UrlBot() string {
 	return fmt.Sprintf("https://api.telegram.org/bot%s", seb.tok)
 }

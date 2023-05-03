@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 
 	"github.com/kneerunjun/botmincock/bot/resp"
+	"github.com/kneerunjun/botmincock/dbadp"
 	log "github.com/sirupsen/logrus"
-	"gopkg.in/mgo.v2"
 )
 
 /*
@@ -14,11 +14,11 @@ Flywheel object that gets injected in the command
 ====================
 */
 type CmdExecCtx struct {
-	DB *mgo.Database
+	DBAdp dbadp.DbAdaptor //DBAdaptor is to be pushed to biz functions for calling out domain functions
 }
 
-func (cec *CmdExecCtx) SetDB(db *mgo.Database) *CmdExecCtx {
-	cec.DB = db
+func (cec *CmdExecCtx) SetDB(db dbadp.DbAdaptor) *CmdExecCtx {
+	cec.DBAdp = db
 	return cec
 }
 func NewExecCtx() *CmdExecCtx {
