@@ -3,6 +3,7 @@ package cmd
 import (
 	"encoding/json"
 
+	"github.com/kneerunjun/botmincock/biz"
 	"github.com/kneerunjun/botmincock/bot/resp"
 	log "github.com/sirupsen/logrus"
 )
@@ -33,9 +34,14 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 	return byt
 }
 
-// Execute : will execute database connections and add a new user account into the database
-// acc_duplicate : call back to be executed in whichever database context
-// add_account : query call but being agnostic of the database context
+// Execute : from the command will pick the params required for registering a new account
+// Upon getting the account registered text response of the newly registered account
 func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
-	return nil
+	newAcc := &biz.UserAccount{TelegID: reg.SenderId, Email: reg.UserEmail, Name: reg.FullName}
+	err := biz.RegisterNewAccount(newAcc, ctx.DBAdp)
+	if err != nil {
+		de, _ := err.(*biz.DomainError)
+		return resp.NewErrResponse(err, de.Loc, de.UserMsg, reg.ChatId, reg.MsgId)
+	}
+	return resp.NewTextResponse(newAcc.ToMsgTxt(), reg.ChatId, reg.MsgId)
 }

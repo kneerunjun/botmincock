@@ -48,6 +48,9 @@ type BotUpdate struct {
 // NOTE: though if you forget to include ?offset in the url this will get all the updates all starting origin history
 func FetchBotUpdates(offset int64, bot core.Bot) ([]BotUpdate, error) {
 	var url string
+	log.WithFields(log.Fields{
+		"url": bot.UrlBot(),
+	}).Debug("Url of the bot.. ")
 	if offset > 0 {
 		url = fmt.Sprintf("%s/getUpdates?offset=%d", bot.UrlBot(), offset)
 	} else {

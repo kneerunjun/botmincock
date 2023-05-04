@@ -9,5 +9,5 @@ type MyInfoBotCmd struct {
 }
 
 func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
-	return nil
+	return resp.NewTextResponse("Oops! we have disconnected the implementation for this command", info.ChatId, info.MsgId)
 }

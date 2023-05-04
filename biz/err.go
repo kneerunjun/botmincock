@@ -18,7 +18,11 @@ type DomainError struct {
 }
 
 func (de *DomainError) Error() string {
-	return fmt.Sprintf("%s %s:%s", de.Loc, de.Err, de.Internal)
+	if de.Internal != nil {
+		return fmt.Sprintf("%s %s:%s", de.Loc, de.Err, de.Internal)
+	} else {
+		return fmt.Sprintf("%s %s", de.Loc, de.Err)
+	}
 }
 func (de *DomainError) SetLoc(l string) *DomainError {
 	de.Loc = l

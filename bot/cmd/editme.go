@@ -13,5 +13,5 @@ type EditMeBotCmd struct {
 }
 
 func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
-	return nil
+	return resp.NewTextResponse("Oops! we have disconnected the implementation for this command", edit.ChatId, edit.MsgId)
 }

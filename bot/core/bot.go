@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Bot interface {
@@ -38,6 +40,9 @@ func (seb *SharedExpensesBot) ApplyConfig(c *BotConfig) error {
 		return fmt.Errorf("invalid configuration: token cannot be nil")
 	}
 	seb.tok = c.Token
+	logrus.WithFields(logrus.Fields{
+		"configured token": seb.Token,
+	}).Debug("checking in on the configuration")
 	return nil
 }
 

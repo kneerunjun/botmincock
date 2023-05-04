@@ -12,8 +12,8 @@ type ErrBotResp struct {
 
 func (ebr *ErrBotResp) Log() {
 	log.WithFields(log.Fields{
-		"err": ebr.Err,
-	}).Errorf("fail: %s", ebr.Context)
+		"err": ebr.Err.Error(),
+	}).Error("error response")
 }
 
 func NewErrResponse(err error, ctx string, msg string, chatid, msgid int64) *ErrBotResp {
