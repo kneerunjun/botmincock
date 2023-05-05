@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/kneerunjun/botmincock/biz"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -9,5 +10,11 @@ type MyInfoBotCmd struct {
 }
 
 func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
-	return resp.NewTextResponse("Oops! we have disconnected the implementation for this command", info.ChatId, info.MsgId)
+	acc := &biz.UserAccount{TelegID: info.SenderId}
+	err := biz.AccountInfo(acc, ctx.DBAdp)
+	if err != nil {
+		de, _ := err.(*biz.DomainError)
+		return resp.NewErrResponse(err, de.Loc, de.UserMsg, info.ChatId, info.MsgId)
+	}
+	return resp.NewTextResponse(acc.ToMsgTxt(), info.ChatId, info.MsgId)
 }

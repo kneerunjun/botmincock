@@ -30,6 +30,28 @@ var (
 	REGX_EMAIL = regexp.MustCompile(`^[\w\d._]+@[\w]+.[\w\d]+$`)
 )
 
+// AccountInfo: gets the account information for given unique id
+// ua		: in/out param sends in the teleg id for search and account information on return
+// iadp		: db adaptor
+func AccountInfo(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	count := 0
+	archive := false
+	flt := &UserAccount{TelegID: ua.TelegID, Archived: &archive} // account being queried
+	if err := iadp.GetCount(flt, &count); err != nil {
+		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+	}
+	if count == 0 {
+		return NewDomainError(fmt.Errorf("account %d does not exists ", ua.TelegID), nil).SetLoc("AccountInfo").SetUsrMsg(ACC_MISSN)
+	}
+	info, err := iadp.GetOne(flt, reflect.TypeOf(&UserAccount{}))
+	if err != nil {
+		return NewDomainError(fmt.Errorf("failed query to get account %d", ua.TelegID), err).SetLoc("AccountInfo").SetUsrMsg(TRY_AGAIN)
+	}
+	x, _ := info.(*UserAccount)
+	*ua = *x
+	return nil
+}
+
 // RegisterNewAccount: checks for the account duplicates, validates the account values and then just pushes that to the database
 // Any account when registered new will be marked archived = false
 // any account when registered new will have elevation =0
@@ -121,7 +143,7 @@ func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	if ua == nil {
 		return NewDomainError(fmt.Errorf("nil account isnt a valid account"), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
 	} else if !REGX_EMAIL.MatchString(ua.Email) {
-		return NewDomainError(fmt.Errorf("account %s isnt a valid account", ua.Email), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+		return NewDomainError(fmt.Errorf("email %s is invalid", ua.Email), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
 	}
 	exists := 0
 	archive := false

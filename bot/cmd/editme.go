@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/kneerunjun/botmincock/biz"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -13,5 +14,11 @@ type EditMeBotCmd struct {
 }
 
 func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
-	return resp.NewTextResponse("Oops! we have disconnected the implementation for this command", edit.ChatId, edit.MsgId)
+	patchAcc := &biz.UserAccount{TelegID: edit.SenderId, Email: edit.UserEmail}
+	err := biz.UpdateAccountEmail(patchAcc, ctx.DBAdp)
+	if err != nil {
+		de, _ := err.(*biz.DomainError)
+		return resp.NewErrResponse(err, de.Loc, de.UserMsg, edit.ChatId, edit.MsgId)
+	}
+	return resp.NewTextResponse(patchAcc.ToMsgTxt(), edit.ChatId, edit.MsgId)
 }

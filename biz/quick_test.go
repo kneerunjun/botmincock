@@ -217,6 +217,7 @@ func TestEmailRegx(t *testing.T) {
 		"jhucker.be9@virginia.edu",
 		"lgh_iona@newyorker.com",
 		"kneerunjun@gmail.com",
+		"awatiniranjan@gmail.com",
 	}
 	dataNotOk := []string{
 		"ahubatsch8@bbc.co.uk",
