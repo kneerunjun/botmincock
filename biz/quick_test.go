@@ -118,6 +118,14 @@ func TestElevateAcc(t *testing.T) {
 		err := ElevateAccount(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
 		assert.Nil(t, err, warnMessage("failed elevate account"))
 	}
+	// TEST: testing for data not ok
+	overElev := AccElev(uint(5)) // over elevation of an account should not be possible
+	for _, d := range dataOk {
+		d.Elevtn = &overElev
+		err := ElevateAccount(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, TEST_MONGO_COLL))
+		assert.NotNil(t, err, "Unexpected not nil error when testing with over elevation of the account")
+	}
+
 	/*
 		Cleaning up the test database
 	*/

@@ -116,7 +116,7 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		// account does not exists - error
 		return NewDomainError(fmt.Errorf("account not found registered  %d", ua.TelegID), nil).SetLoc("ElevateAccount").SetUsrMsg(ACC_MISSN)
 	}
-	if *ua.Elevtn < AccElev(User) && *ua.Elevtn > AccElev(Admin) {
+	if *ua.Elevtn < AccElev(User) || *ua.Elevtn > AccElev(Admin) {
 		// has to be between permissible limits
 		return NewDomainError(fmt.Errorf("requested account elevation is invalid %d", ua.Elevtn), nil).SetLoc("ElevateAccount").SetUsrMsg(INVLD_PARAM)
 	}

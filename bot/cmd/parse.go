@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"regexp"
+	"strconv"
 
 	"github.com/kneerunjun/botmincock/bot/updt"
 )
@@ -34,6 +35,12 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 				return &EditMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string)}, nil
 			case "deregisterme":
 				return &DeregBotCmd{AnyBotCmd: anyCmd}, nil
+			case "elevateacc":
+				id, err := strconv.ParseInt(cmdArgs["accid"].(string), 10, 64)
+				if err != nil {
+					return nil, fmt.Errorf("error parsing command, failed to get ID of the account to elevate")
+				}
+				return &ElevAccBotCmd{AnyBotCmd: anyCmd, TargetAcc: id}, nil
 			default:
 				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
 			}
