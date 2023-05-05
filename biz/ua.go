@@ -181,7 +181,7 @@ func DeregisterAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		return NewDomainError(fmt.Errorf("failed to check if the account is registered %d", ua.TelegID), err).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
 	}
 	if exists == 0 {
-		return NewDomainError(fmt.Errorf("no account %d found registered", ua.TelegID), nil).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(fmt.Errorf("no account %d found registered", ua.TelegID), nil).SetLoc("DeregisterAccount").SetUsrMsg(ACC_MISSN)
 	}
 	archive = true
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: &archive}); err != nil {

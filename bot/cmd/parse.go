@@ -32,6 +32,8 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 				return &MyInfoBotCmd{AnyBotCmd: anyCmd}, nil
 			case "editme":
 				return &EditMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string)}, nil
+			case "deregisterme":
+				return &DeregBotCmd{AnyBotCmd: anyCmd}, nil
 			default:
 				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
 			}
