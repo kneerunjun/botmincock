@@ -66,9 +66,8 @@ type Estimate struct {
 
 // Any purchases on behalf of the bot as a manager by any account towards goods/services shared by the group is recorded as an expense
 type Expense struct {
-	TelegID int64  `bson:"tid" json:"tid"`
-	Month   uint8  `bson:"mnth" json:"mnth"`
-	Year    uint16 `bson:"yr" json:"yr"`
-	Desc    string `bson:"desc" json:"desc"`
-	INR     int    `bson:"inr" json:"inr"`
+	TelegID int64     `bson:"tid,omitempty" json:"tid"`
+	DtTm    time.Time `bson:"dttm,omitempty" json:"dttm"`
+	Desc    string    `bson:"desc,omitempty" json:"desc"`
+	INR     float32   `bson:"inr,omitempty" json:"inr"`
 }

@@ -17,6 +17,33 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestAddNewExpense(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("expenses")
+	defer coll.RemoveAll(bson.M{})
+	defer t.Log(warnMessage("now clearing the database.."))
+	t.Log(infoMessage("now testing for one sanple expense"))
+	d := &Expense{INR: 1055.00, TelegID: 5157350442, DtTm: time.Now(), Desc: "test expense, purchase of shuttles"}
+	err := RecordExpense(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
+	assert.Nil(t, err, "unexpected error when recording an expense")
+
+	// TEST: for negative test cases
+	dataNotOK := []*Expense{
+		nil, // nil expense is outrightly rejected
+		{TelegID: 5157350442, INR: 0.0},
+		{TelegID: 5157350442},
+	}
+	t.Log(infoMessage("now testing negative cases"))
+	for _, d := range dataNotOK {
+		err := RecordExpense(d, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
+		assert.NotNil(t, err, "unexpected nil err when data not ok")
+	}
+}
+
 func TestRegisterAccount(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
