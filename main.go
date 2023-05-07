@@ -217,7 +217,12 @@ func main() {
 					if err != nil {
 						respChn <- resp.NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "accounts")))
+						cmdcoll, ok := commnd.(cmd.CmdForColl)
+						if !ok {
+							respChn <- resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ParseBotCmd", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
+						} else {
+							respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
+						}
 					}
 				}()
 			case updt := <-txtMsgs:

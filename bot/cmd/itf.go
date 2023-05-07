@@ -40,6 +40,11 @@ type Loggable interface {
 	AsJsonByt() []byte
 }
 
+// CmdForColl : for all the commands that work on mongo collections
+type CmdForColl interface {
+	CollName() string
+}
+
 /*====================
 Generic bot command, all your new commands need to derive from this
 ====================*/

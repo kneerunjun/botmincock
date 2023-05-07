@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/kneerunjun/botmincock/bot/updt"
-	"github.com/sirupsen/logrus"
 )
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot
@@ -43,7 +42,6 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 				}
 				return &ElevAccBotCmd{AnyBotCmd: anyCmd, TargetAcc: id}, nil
 			case "addexpense":
-				logrus.Debug("Command to add expense")
 				inrVal, err := strconv.ParseFloat(cmdArgs["inr"].(string), 32)
 				if err != nil {
 					return nil, fmt.Errorf("error parsing command, failed to get expenditure amount. Expected numerical value")

@@ -22,3 +22,7 @@ func (debc *DeregBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse("You have been successfully deregistered, you can re-register anytime using /registerme command", debc.ChatId, debc.MsgId)
 }
+
+func (debc *DeregBotCmd) CollName() string {
+	return "accounts"
+}

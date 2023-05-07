@@ -25,3 +25,7 @@ func (ebc *AddExpenseBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse("successfully recorded expense", ebc.ChatId, ebc.MsgId)
 }
+
+func (ebc *AddExpenseBotCmd) CollName() string {
+	return "expenses"
+}

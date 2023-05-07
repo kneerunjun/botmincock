@@ -45,3 +45,7 @@ func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse(newAcc.ToMsgTxt(), reg.ChatId, reg.MsgId)
 }
+
+func (reg *RegMeBotCmd) CollName() string {
+	return "accounts"
+}

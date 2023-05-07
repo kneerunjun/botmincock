@@ -22,3 +22,7 @@ func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse(patchAcc.ToMsgTxt(), edit.ChatId, edit.MsgId)
 }
+
+func (edit *EditMeBotCmd) CollName() string {
+	return "accounts"
+}

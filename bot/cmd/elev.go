@@ -38,3 +38,7 @@ func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse("Successfully elevated account", eabc.ChatId, eabc.MsgId)
 }
+
+func (eabc *ElevAccBotCmd) CollName() string {
+	return "accounts"
+}

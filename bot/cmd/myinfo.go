@@ -18,3 +18,7 @@ func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	}
 	return resp.NewTextResponse(acc.ToMsgTxt(), info.ChatId, info.MsgId)
 }
+
+func (info *MyInfoBotCmd) CollName() string {
+	return "accounts"
+}
