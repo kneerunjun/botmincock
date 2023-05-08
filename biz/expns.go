@@ -3,10 +3,53 @@ package biz
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	"github.com/kneerunjun/botmincock/dbadp"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/mgo.v2/bson"
 )
+
+// daysInMonth: for any month this can give the utmost days in it
+// https://stackoverflow.com/questions/35182556/get-last-day-in-month-of-time-time
+func daysInMonth(month time.Month, year int) int {
+	switch month {
+	case time.April, time.June, time.September, time.November:
+		return 30
+	case time.February:
+		// Not all years that are divisible by 4 are leap years
+		// Those that are divisible by 4 but not by 100 or divisible by 400 are leap years
+		if year%4 == 0 && (year%100 != 0 || year%400 == 0) { // leap year
+			return 29
+		}
+		return 28 // not a leap year
+	default:
+		return 31
+	}
+}
+
+// UserMonthlyExpense: for the current month this will get sum of all expenses for the
+// ue		: in/out param, send in the id and the month for which expenses are expected, gets back with the aggregate of expenses
+func UserMonthlyExpense(ue *UsrMnthExpens, iadp dbadp.DbAdaptor) error {
+	temp := ue.Dttm
+	yr := temp.Year()
+	mn := temp.Month()
+	loc := temp.Location()
+	fromDt := time.Date(yr, mn, 1, 0, 0, 0, 0, loc)                 //start date for any month is 1
+	toDt := time.Date(yr, mn, daysInMonth(mn, yr), 0, 0, 0, 0, loc) // end date for a month needs some extra calc
+	pipe := []bson.M{
+		{"$match": bson.M{"tid": ue.TelegID, "dttm": bson.M{"$gte": fromDt, "$lte": toDt}}}, // specific user current month
+		{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$inr"}, "tid": bson.M{"$first": "$tid"}}},
+		{"$project": bson.M{"_id": 0}},
+	}
+	err := iadp.Aggregate(pipe, ue)
+	if err != nil {
+		return NewDomainError(fmt.Errorf("failed query getting user monthly expenses"), err)
+	}
+	// since on the way back the data on object ptr is erased we have to set the month again
+	ue.Dttm = temp
+	return nil
+}
 
 // RecordExpense : recrods a new expense in the database
 // Expenses with default date time , and zero value invalid expenses

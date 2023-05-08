@@ -52,6 +52,11 @@ func (ma *mongoAdaptor) GetCount(m interface{}, c *int) error {
 	return nil
 }
 
+func (ma *mongoAdaptor) Aggregate(p []bson.M, res interface{}) error {
+	err := ma.Pipe(p).One(res)
+	return err
+}
+
 func NewMongoAdpator(ipport, database, coll string) DbAdaptor {
 	sess, err := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{ipport},

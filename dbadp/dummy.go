@@ -6,7 +6,11 @@ time		: April 2023
 project		: botmincock
 For the purpose of usint testing other packages that want to be agnostic of the logic thats implemented here on the database adaptor we implement a facade of a adaptor
 ====================================*/
-import "reflect"
+import (
+	"reflect"
+
+	"gopkg.in/mgo.v2/bson"
+)
 
 type DummyAdaptor struct {
 	DummyCount  int
@@ -30,5 +34,8 @@ func (da *DummyAdaptor) GetOne(interface{}, reflect.Type) (interface{}, error) {
 }
 func (da *DummyAdaptor) GetCount(o interface{}, c *int) error {
 	*c = da.DummyCount
+	return nil
+}
+func (da *DummyAdaptor) Aggregate(p []bson.M, res interface{}) error {
 	return nil
 }

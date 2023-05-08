@@ -71,3 +71,20 @@ type Expense struct {
 	Desc    string    `bson:"desc,omitempty" json:"desc"`
 	INR     float32   `bson:"inr,omitempty" json:"inr"`
 }
+
+func (exp *Expense) ToMsgTxt() string {
+	return fmt.Sprintf("total expense %.2f for account %d", exp.INR, exp.TelegID)
+}
+
+// UsrMnthExpens :when you aggregate the monthly expense for any accoutn, this can be used as flywheel object
+type UsrMnthExpens struct {
+	// has only unmarshall relevance
+	TelegID int64     `bson:"tid"`
+	Total   float32   `bson:"total"`
+	Dttm    time.Time // used only for querying the monthly expense has no bson counter
+}
+
+func (ume *UsrMnthExpens) ToMsgTxt() string {
+	// https://stackoverflow.com/questions/3871729/transmitting-newline-character-n
+	return fmt.Sprintf("Account: %d%%0ATotal expenditure for %s totals to %.2f", ume.TelegID, ume.Dttm.Month().String(), ume.Total)
+}

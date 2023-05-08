@@ -41,6 +41,8 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 					return nil, fmt.Errorf("error parsing command, failed to get ID of the account to elevate")
 				}
 				return &ElevAccBotCmd{AnyBotCmd: anyCmd, TargetAcc: id}, nil
+			case "myexpense":
+				return &ExpenseAggBotCmd{AnyBotCmd: anyCmd}, nil
 			case "addexpense":
 				inrVal, err := strconv.ParseFloat(cmdArgs["inr"].(string), 32)
 				if err != nil {

@@ -37,6 +37,7 @@ var (
 		// elevating the account to higher roles
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>elevateacc)(\s+)(?P<accid>[\d]+)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>addexpense)(\s+)(?P<inr>[0-9]+)(\s+)(?P<desc>[^!@#\$%%\^&\*\(\\)\[\]\<\\>]*)$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myexpense)$`, os.Getenv("BOT_HANDLE"))),
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance
@@ -209,7 +210,7 @@ func main() {
 				log.WithFields(log.Fields{
 					"text": updt.Message.Text,
 				}).Debug("Received a bot callout ..")
-				respChn <- resp.NewTextResponse("Thats whats called as a bot callout.. tag me and I see that as an opportunity to serve you", updt.Message.Chat.Id, updt.Message.Id)
+				respChn <- resp.NewTextResponse("Did you mean to command me? This isn't valid command", updt.Message.Chat.Id, updt.Message.Id)
 			case updt := <-botCommands:
 				// handling bot commands on separate coroutine
 				go func() {
