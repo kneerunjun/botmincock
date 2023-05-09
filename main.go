@@ -46,6 +46,11 @@ var (
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>addexpense)(\s+)(?P<inr>[0-9]+)(\s+)(?P<desc>[^!@#\$%%\^&\*\(\\)\[\]\<\\>]*)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myexpense)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>allexpenses)$`, os.Getenv("BOT_HANDLE"))),
+		/*
+			Help listing of all the commands
+			calling out the bot and the sending the /help command shall send a list of commands
+		*/
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>help)$`, os.Getenv("BOT_HANDLE"))),
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance
