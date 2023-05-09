@@ -1,13 +1,21 @@
 package biz
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/kneerunjun/botmincock/dbadp"
 	"github.com/sirupsen/logrus"
+	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
+)
+
+const (
+	INVL_EXPNS     = "one or more arguments of the command to record an expense is invalid. Kindly check & send again"
+	FAIL_QRY_EXPNS = "one or more internal operations on expense failed, if this continues we request you to contact the admin"
+	FAIL_GET_EXPNS = "failed to find expense, either an operation failed or there weren't any recorded expenses"
 )
 
 // daysInMonth: for any month this can give the utmost days in it
@@ -44,7 +52,11 @@ func TeamMonthlyExpense(ue *MnthlyExpnsQry, iadp dbadp.DbAdaptor) error {
 	}
 	err := iadp.Aggregate(pipe, ue)
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed query getting user monthly expenses"), err)
+		if errors.Is(err, mgo.ErrNotFound) {
+			ue.Total = float32(0.0) // since no expenses found for matching i
+			return nil
+		}
+		return NewDomainError(fmt.Errorf("failed query getting team monthly expenses"), err).SetLoc("TeamMonthlyExpense").SetUsrMsg(FAIL_QRY_EXPNS)
 	}
 	ue.Dttm = temp // setting the date back to what it was
 	return nil
@@ -66,7 +78,11 @@ func UserMonthlyExpense(ue *MnthlyExpnsQry, iadp dbadp.DbAdaptor) error {
 	}
 	err := iadp.Aggregate(pipe, ue)
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed query getting user monthly expenses"), err)
+		if errors.Is(err, mgo.ErrNotFound) {
+			ue.Total = float32(0.0) // since no expenses found for matching i
+			return nil
+		}
+		return NewDomainError(fmt.Errorf("failed query getting user monthly expenses"), err).SetLoc("UserMonthlyExpense").SetUsrMsg(FAIL_QRY_EXPNS)
 	}
 	// since on the way back the data on object ptr is erased we have to set the month again
 	ue.Dttm = temp
@@ -79,26 +95,36 @@ func UserMonthlyExpense(ue *MnthlyExpnsQry, iadp dbadp.DbAdaptor) error {
 // recording expenses on behalf of another user is not possible
 func RecordExpense(exp *Expense, iadp dbadp.DbAdaptor) error {
 	if exp == nil {
-		return NewDomainError(fmt.Errorf("invalid expense object, cannot be nil"), nil)
+		return NewDomainError(fmt.Errorf("invalid expense object, cannot be nil"), nil).SetLoc("RecordExpense").SetUsrMsg(INVL_EXPNS)
 	}
 	if exp.DtTm.IsZero() || exp.INR <= float32(0.0) {
 		logrus.WithFields(logrus.Fields{
 			"dttm": exp.DtTm,
 			"inr":  exp.INR,
 		})
-		return NewDomainError(fmt.Errorf("one or more arguments for the expense are invalid"), nil)
+		return NewDomainError(fmt.Errorf("one or more arguments for the expense are invalid"), nil).SetLoc("RecordExpense").SetUsrMsg(INVL_EXPNS)
 	}
 	// relational check to be done in the calling package not here
 	// like checkin if the account against which expense is added is not checked here
 	err := iadp.AddOne(exp)
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed to add expense"), err)
+		return NewDomainError(fmt.Errorf("failed to record expense"), err).SetLoc("RecordExpense").SetUsrMsg(FAIL_QRY_EXPNS)
+	}
+	/*
+		Adds as a credit for the same account in the transactions as well
+	*/
+	transacs := iadp.Switch("transacs")
+	trnsc := &Transac{TelegID: exp.TelegID, Credit: exp.INR, Desc: exp.Desc, DtTm: exp.DtTm}
+	err = transacs.AddOne(trnsc)
+	if err != nil {
+		return NewDomainError(fmt.Errorf("failed to record transaction"), err).SetLoc("RecordExpense").SetUsrMsg(FAIL_QRY_EXPNS)
 	}
 	// sending back the details of the newly added expense
 	// TODO: there has to be an id to identify the expense uniquly, else we would have to use 3 simulteneous fields to pick the expenses
+	// BUG: to uniquely identify the expense we need to add the date of the expense too..
 	newExp, err := iadp.GetOne(&Expense{TelegID: exp.TelegID, INR: exp.INR}, reflect.TypeOf(&Expense{}))
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed to get details of the newly added expense"), err)
+		return NewDomainError(fmt.Errorf("failed to get details of the newly added expense"), err).SetLoc("RecordExpense").SetUsrMsg(FAIL_GET_EXPNS)
 	}
 	x, _ := newExp.(*Expense)
 	*exp = *x

@@ -48,9 +48,9 @@ func (ua *UserAccount) ToMsgTxt() string {
 // denormalized this has to be aggregated to see the balance of the account
 type Transac struct {
 	TelegID int64     `bson:"tid" json:"tid"`
-	Credit  int       `bson:"credit" json:"credit"`
-	Debit   int       `bson:"debit" json:"debit"`
-	Desc    string    `bson:"desc" json:"desc"`
+	Credit  float32   `bson:"credit,omitempty" json:"credit"`
+	Debit   float32   `bson:"debit,omitempty" json:"debit"`
+	Desc    string    `bson:"desc,omitempty" json:"desc"`
 	DtTm    time.Time `bson:"date" json:"date"`
 }
 

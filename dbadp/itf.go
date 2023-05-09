@@ -21,4 +21,5 @@ type DbAdaptor interface {
 	GetOne(interface{}, reflect.Type) (interface{}, error)
 	GetCount(interface{}, *int) error
 	Aggregate(p []bson.M, res interface{}) error
+	Switch(string) DbAdaptor // switches the collection and sends out a new adaptor with new underlying collection
 }

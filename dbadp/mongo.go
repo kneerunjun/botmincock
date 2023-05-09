@@ -52,9 +52,15 @@ func (ma *mongoAdaptor) GetCount(m interface{}, c *int) error {
 	return nil
 }
 
+// Aggregate : runs the pipe for the getting the aggregate query on any object
 func (ma *mongoAdaptor) Aggregate(p []bson.M, res interface{}) error {
-	err := ma.Pipe(p).One(res)
-	return err
+	// NOTE: when the pipe generates no results, resultant err == ErrNotFound
+	return ma.Pipe(p).One(res)
+}
+
+func (ma *mongoAdaptor) Switch(name string) DbAdaptor {
+	mngcoll := ma.Database.Session.DB("").C(name)
+	return &mongoAdaptor{Collection: mngcoll}
 }
 
 func NewMongoAdpator(ipport, database, coll string) DbAdaptor {
