@@ -17,6 +17,64 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestTeamMonthlyExpense(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("expenses")
+	// Inserting some test expenses
+	okData := []*Expense{
+		{TelegID: 5157350442, Desc: "Dimorphocarpa wislizeni", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Apocynum L", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Schedonorus giganteus", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Pertusaria carneopallida", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Desmatodon latifolius", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Stenaria mullerae", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Muhlenbergia arenacea", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Illosporium carneum Fr", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Bouchetia erecta DC", INR: 300, DtTm: time.Now()},
+		{TelegID: 5157350442, Desc: "Chromolaena corymbosa", INR: 300, DtTm: time.Now()},
+	}
+	testSum := float32(0.0)
+	for _, d := range okData {
+		if coll.Insert(d) == nil {
+			testSum += d.INR
+		}
+	}
+	/*====================
+	Actual test with only one user expenses
+	====================*/
+	t.Log(infoMessage("now testing the team's aggregate monthly expenses.."))
+	mnthExp := &MnthlyExpnsQry{Dttm: time.Now()}
+	err := TeamMonthlyExpense(mnthExp, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
+	assert.Nil(t, err, "unexpected err when getting the team monthly expense")
+	assert.Equal(t, testSum, mnthExp.Total, "total of the team monthly expense does not match")
+
+	/*
+		We then add some noise in the database -
+		expenses from other months and test to see if get the same total
+	*/
+	noiseData := []*Expense{
+		{TelegID: 5116645118, Desc: "noise", INR: 100, DtTm: time.Date(2022, time.May, 20, 0, 0, 0, 0, time.Local)},
+		{TelegID: 5116645118, Desc: "noise", INR: 100, DtTm: time.Date(2023, time.April, 20, 0, 0, 0, 0, time.Local)},
+	}
+	for _, d := range noiseData {
+		coll.Insert(d)
+	}
+	t.Log(infoMessage("now testing the team's aggregate monthly expenses with noise in the data"))
+	mnthExp = &MnthlyExpnsQry{Dttm: time.Now()}
+	err = TeamMonthlyExpense(mnthExp, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
+	assert.Nil(t, err, "unexpected err when getting the team monthly expense")
+	assert.Equal(t, testSum, mnthExp.Total, "total of the team monthly expense does not match")
+	/*====================
+	cleanup
+	====================*/
+	t.Log(warnMessage("now clearing the database.."))
+	coll.RemoveAll(bson.M{})
+}
+
 func TestUserMonthlyExpense(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
@@ -47,7 +105,7 @@ func TestUserMonthlyExpense(t *testing.T) {
 	Actual test with only one user expenses
 	====================*/
 	t.Log(infoMessage("now testing the aggregate monthly expenses.."))
-	mnthExp := &UsrMnthExpens{TelegID: 5157350442, Dttm: time.Now()}
+	mnthExp := &MnthlyExpnsQry{TelegID: 5157350442, Dttm: time.Now()}
 	err := UserMonthlyExpense(mnthExp, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
 	assert.Nil(t, err, "unexpected error when aggregating user monthly expense")
 	assert.Equal(t, testSum, mnthExp.Total, "total of the user monthly expense does not match")
@@ -72,7 +130,7 @@ func TestUserMonthlyExpense(t *testing.T) {
 	the test is the same but this time database has data for another user as well
 	====================*/
 	t.Log(infoMessage("now testing the aggregate monthly expenses with data noise"))
-	mnthExp = &UsrMnthExpens{TelegID: 5157350442, Dttm: time.Now()}
+	mnthExp = &MnthlyExpnsQry{TelegID: 5157350442, Dttm: time.Now()}
 	err = UserMonthlyExpense(mnthExp, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "expenses"))
 	assert.Nil(t, err, "unexpected error when aggregating user monthly expense")
 	assert.Equal(t, testSum, mnthExp.Total, "total of the user monthly expense does not match")

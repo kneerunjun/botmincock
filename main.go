@@ -26,18 +26,26 @@ var (
 	FVerbose, FLogF bool
 	logFile         string
 	allCommands     = []*regexp.Regexp{
-		// register new user
+		/*
+			Registering new account
+			editing account email
+			checking personal information
+			de-registering an account
+			elevating the account
+		*/
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>registerme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
-		// email edit
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>editme)(\s+)(?P<email>[\w\d._]+@[\w]+.[\w\d]+)+$`, os.Getenv("BOT_HANDLE"))),
-		// getting user info
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myinfo)$`, os.Getenv("BOT_HANDLE"))),
-		// archiving the user account
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>deregisterme)$`, os.Getenv("BOT_HANDLE"))),
-		// elevating the account to higher roles
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>elevateacc)(\s+)(?P<accid>[\d]+)$`, os.Getenv("BOT_HANDLE"))),
+		/*
+			Adding  expenses
+			Check for personal expenses
+			Check for entire team expenses
+		*/
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>addexpense)(\s+)(?P<inr>[0-9]+)(\s+)(?P<desc>[^!@#\$%%\^&\*\(\\)\[\]\<\\>]*)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myexpense)$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>allexpenses)$`, os.Getenv("BOT_HANDLE"))),
 	}
 	textCommands = []*regexp.Regexp{
 		regexp.MustCompile(`^(?P<cmd>(?i)gm)$`), // user intends to mark his attendance

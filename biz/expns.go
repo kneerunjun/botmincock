@@ -28,9 +28,31 @@ func daysInMonth(month time.Month, year int) int {
 	}
 }
 
+// TeamMonthlyExpense: gets the aggregate of monthly expenses for the month
+// ue		: in/out param, send in the id and the month for which expenses are expected, gets back with the aggregate of expenses
+func TeamMonthlyExpense(ue *MnthlyExpnsQry, iadp dbadp.DbAdaptor) error {
+	temp := ue.Dttm
+	yr := temp.Year()
+	mn := temp.Month()
+	loc := temp.Location()
+	fromDt := time.Date(yr, mn, 1, 0, 0, 0, 0, loc)                 //start date for any month is 1
+	toDt := time.Date(yr, mn, daysInMonth(mn, yr), 0, 0, 0, 0, loc) // end date for a month needs some extra calc
+	pipe := []bson.M{
+		{"$match": bson.M{"dttm": bson.M{"$gte": fromDt, "$lte": toDt}}}, // only matching all the expenses for the month
+		{"$group": bson.M{"_id": nil, "total": bson.M{"$sum": "$inr"}}},
+		{"$project": bson.M{"_id": 0}},
+	}
+	err := iadp.Aggregate(pipe, ue)
+	if err != nil {
+		return NewDomainError(fmt.Errorf("failed query getting user monthly expenses"), err)
+	}
+	ue.Dttm = temp // setting the date back to what it was
+	return nil
+}
+
 // UserMonthlyExpense: for the current month this will get sum of all expenses for the
 // ue		: in/out param, send in the id and the month for which expenses are expected, gets back with the aggregate of expenses
-func UserMonthlyExpense(ue *UsrMnthExpens, iadp dbadp.DbAdaptor) error {
+func UserMonthlyExpense(ue *MnthlyExpnsQry, iadp dbadp.DbAdaptor) error {
 	temp := ue.Dttm
 	yr := temp.Year()
 	mn := temp.Month()

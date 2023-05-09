@@ -76,15 +76,20 @@ func (exp *Expense) ToMsgTxt() string {
 	return fmt.Sprintf("total expense %.2f for account %d", exp.INR, exp.TelegID)
 }
 
-// UsrMnthExpens :when you aggregate the monthly expense for any accoutn, this can be used as flywheel object
-type UsrMnthExpens struct {
-	// has only unmarshall relevance
-	TelegID int64     `bson:"tid"`
-	Total   float32   `bson:"total"`
+// MnthlyExpnsQry : when querying for the monthly expense aggregates this serves as the flywheel object
+type MnthlyExpnsQry struct {
+	TelegID int64     `bson:"tid"`   // relevant only when querying for user aggregate expenses
+	Total   float32   `bson:"total"` // gets the aggregate monthly expense as a result
 	Dttm    time.Time // used only for querying the monthly expense has no bson counter
 }
 
-func (ume *UsrMnthExpens) ToMsgTxt() string {
+func (ume *MnthlyExpnsQry) ToMsgTxt() string {
 	// https://stackoverflow.com/questions/3871729/transmitting-newline-character-n
-	return fmt.Sprintf("Account: %d%%0ATotal expenditure for %s totals to %.2f", ume.TelegID, ume.Dttm.Month().String(), ume.Total)
+	if ume.TelegID != int64(0) {
+		return fmt.Sprintf("Account: %d%%0ATotal expenditure for %s totals to %.2f", ume.TelegID, ume.Dttm.Month().String(), ume.Total)
+	} else {
+		// when what is needed is total expenses for the team
+		return fmt.Sprintf("Total team expenditure for %s totals to %.2f", ume.Dttm.Month().String(), ume.Total)
+	}
+
 }

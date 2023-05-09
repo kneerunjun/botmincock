@@ -43,12 +43,15 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 				return &ElevAccBotCmd{AnyBotCmd: anyCmd, TargetAcc: id}, nil
 			case "myexpense":
 				return &ExpenseAggBotCmd{AnyBotCmd: anyCmd}, nil
+			case "allexpenses":
+				return &AllExpenseBotCmd{AnyBotCmd: anyCmd}, nil
 			case "addexpense":
 				inrVal, err := strconv.ParseFloat(cmdArgs["inr"].(string), 32)
 				if err != nil {
 					return nil, fmt.Errorf("error parsing command, failed to get expenditure amount. Expected numerical value")
 				}
 				return &AddExpenseBotCmd{AnyBotCmd: anyCmd, Val: float32(inrVal), Desc: cmdArgs["desc"].(string)}, nil
+
 			default:
 				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
 			}
