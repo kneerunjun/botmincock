@@ -17,6 +17,17 @@ For all other collections Account info serves as the base for getting unique ids
 
 type AccElev uint8
 
+func (e AccElev) Stringify() string {
+	if e == AccElev(User) {
+		return "User"
+	} else if e == AccElev(Manager) {
+		return "Manager"
+	} else if e == AccElev(Admin) {
+		return "Admin"
+	}
+	return "Unknown"
+}
+
 // Account elevation as enumeration
 const (
 	User = uint8(0) + iota
