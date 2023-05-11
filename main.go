@@ -247,7 +247,7 @@ func main() {
 				respChn <- resp.NewTextResponse("Thats a text command. Certain text I can recognise as commands for me", updt.Message.Chat.Id, updt.Message.Id)
 			case resp := <-respChn:
 				go func() {
-					resp.Log()
+					// resp.Log()
 					cl := http.Client{Timeout: STD_REQ_TIMEOUT}
 					url := fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl())
 					req, err := http.NewRequest("POST", url, nil)

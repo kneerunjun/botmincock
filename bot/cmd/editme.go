@@ -18,6 +18,7 @@ func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.UpdateAccountEmail(patchAcc, ctx.DBAdp)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, edit.ChatId, edit.MsgId)
 	}
 	return resp.NewTextResponse(patchAcc.ToMsgTxt(), edit.ChatId, edit.MsgId)

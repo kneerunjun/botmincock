@@ -41,6 +41,7 @@ func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.RegisterNewAccount(newAcc, ctx.DBAdp)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, reg.ChatId, reg.MsgId)
 	}
 	return resp.NewTextResponse(newAcc.ToMsgTxt(), reg.ChatId, reg.MsgId)

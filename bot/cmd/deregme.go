@@ -18,6 +18,7 @@ type DeregBotCmd struct {
 func (debc *DeregBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	if err := biz.DeregisterAccount(&biz.UserAccount{TelegID: debc.SenderId}, ctx.DBAdp); err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, debc.ChatId, debc.MsgId)
 	}
 	return resp.NewTextResponse("You have been successfully deregistered, you can re-register anytime using /registerme command", debc.ChatId, debc.MsgId)

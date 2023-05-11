@@ -12,40 +12,41 @@ All the functions here talk to interfaces and the models
 import (
 	"fmt"
 	"reflect"
-	"regexp"
 
 	"github.com/kneerunjun/botmincock/dbadp"
-)
-
-// Set of standard user messages that can be reused in multiple locations in the business functions
-const (
-	TRY_AGAIN    = "Yikes! your command did not work as expected.Try to run again after a while,or if the problem persists kindly contact a sys-admin."
-	DUPL_ACC     = "Account with same ID or email is already registered & active. Cannot register again."
-	ACC_REACTIVE = "Account with same ID found archived. Reactivated the account."
-	ACC_MISSN    = "Account you referring to does not exists. Please register first then try again."
-	INVLD_PARAM  = "One/more params for the command supplied is invalid, Please consult a sys-admin and then try again."
-)
-
-var (
-	REGX_EMAIL = regexp.MustCompile(`^[\w\d._]+@[\w]+.[\w\d]+$`)
+	log "github.com/sirupsen/logrus"
 )
 
 // AccountInfo: gets the account information for given unique id
 // ua		: in/out param sends in the teleg id for search and account information on return
 // iadp		: db adaptor
+// throws an error when account isnt found registered or error in query to get account information
 func AccountInfo(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	errLoc := "AccountInfo"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
+	if ua == nil {
+		return NewDomainError(ERR_NILACC, nil).SetLoc(errLoc).SetUsrMsg(invalid_account("getting nil account information"))
+	}
 	count := 0
 	archive := false
 	flt := &UserAccount{TelegID: ua.TelegID, Archived: &archive} // account being queried
 	if err := iadp.GetCount(flt, &count); err != nil {
-		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	if count == 0 {
-		return NewDomainError(fmt.Errorf("account %d does not exists ", ua.TelegID), nil).SetLoc("AccountInfo").SetUsrMsg(ACC_MISSN)
+		return NewDomainError(ERR_ACC404, nil).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	info, err := iadp.GetOne(flt, reflect.TypeOf(&UserAccount{}))
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed query to get account %d", ua.TelegID), err).SetLoc("AccountInfo").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	x, _ := info.(*UserAccount)
 	*ua = *x
@@ -57,39 +58,60 @@ func AccountInfo(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 // any account when registered new will have elevation =0
 // Icnase of already registered account but archived its re-enabled
 func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
-	if ua == nil || !REGX_EMAIL.MatchString(ua.Email) || ua.Name == "" {
-		// just a prelim check on account fields
-		return NewDomainError(fmt.Errorf("account %s isnt a valid account", ua.Email), nil).SetLoc("RegisterNewAccount").SetUsrMsg(INVLD_PARAM)
+	errLoc := "RegisterNewAccount"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
 	}
-	// Checking to see if live accounts with the same teled id already registered
-	// either accont with same telegid  or the email can cause the duplicate flag to be raised
+	if ua == nil {
+		return NewDomainError(ERR_NILACC, nil).SetLoc(errLoc).SetUsrMsg(invalid_account("getting nil account information"))
+	}
+	if !REGX_EMAIL.MatchString(ua.Email) || ua.Name == "" {
+		return NewDomainError(ERR_ACCFLD, nil).SetLoc(errLoc).SetUsrMsg(invalid_account("trying to register account with invalid email or name")).SetLogEntry(log.Fields{
+			"email": ua.Email,
+		})
+	}
 	duplicate := 0
 	archive := false
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &duplicate); err != nil {
-		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{
+			"telegid":  ua.TelegID,
+			"archived": archive,
+		})
 	}
 	if duplicate != 0 {
-		return NewDomainError(fmt.Errorf("account with same id %d already registered", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(DUPL_ACC)
+		return NewDomainError(ERR_ACCDUPLC, nil).SetLoc(errLoc).SetUsrMsg(duplc_account(ua.TelegID, ua.Email)).SetLogEntry(log.Fields{
+			"telegid":  ua.TelegID,
+			"archived": archive,
+		})
 	}
 	if err := iadp.GetCount(&UserAccount{Email: ua.Email, Archived: &archive}, &duplicate); err != nil {
-		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{
+			"telegid":  ua.TelegID,
+			"archived": archive,
+		})
 	}
 	if duplicate != 0 {
-		return NewDomainError(fmt.Errorf("account with email %s already registered", ua.Email), nil).SetLoc("RegisterNewAccount").SetUsrMsg(DUPL_ACC)
+		return NewDomainError(ERR_ACCDUPLC, nil).SetLoc(errLoc).SetUsrMsg(duplc_account(ua.TelegID, ua.Email)).SetLogEntry(log.Fields{
+			"telegid":  ua.TelegID,
+			"archived": archive,
+		})
 	}
 	archived := 0
 	archive = true
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &archived); err != nil {
-		return NewDomainError(fmt.Errorf("failed to get count of similar archived accounts %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information"))
 	}
 	if archived != 0 {
 		// this means the account just needs re-enablement and not registration
 		// this happens with updating the email id as well.
 		archive = false
 		if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: &archive, Email: ua.Email}); err != nil {
-			return NewDomainError(fmt.Errorf("failed to re-enabled the account %d", ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+			return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(duplc_account(ua.TelegID, ua.Email)).SetLogEntry(log.Fields{
+				"telegid":  ua.TelegID,
+				"archived": archive,
+			})
 		}
-		return NewDomainError(fmt.Errorf("user account %d was found already registered, but was archived. Re-enabled it", ua.TelegID), nil).SetLoc("RegisterNewAccount").SetUsrMsg(ACC_REACTIVE)
+		return NewDomainError(ERR_ACCREENABLE, nil).SetLoc(errLoc).SetUsrMsg(acc_renable(ua.TelegID)).SetLogEntry(log.Fields{"telegid": ua.TelegID})
 	}
 	// defaults when registering new account
 	defaultElev := AccElev(User)
@@ -97,7 +119,10 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 	archive = false
 	ua.Archived = &archive
 	if err := iadp.AddOne(ua); err != nil {
-		return NewDomainError(fmt.Errorf("failed: to add account %s %d", ua.Email, ua.TelegID), err).SetLoc("RegisterNewAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("adding new account information")).SetLogEntry(log.Fields{
+			"telegid":  ua.TelegID,
+			"archived": archive,
+		})
 	}
 	return nil
 }
@@ -106,28 +131,37 @@ func RegisterNewAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 // sends back the account details after having elevated it
 // Errors incase: account does not exists,requested elevation not within limits,query to update account fails,query to get the updated account details fails
 func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
-	// Checking to see if account with same telegid exists and is not archived
+	errLoc := "ElevateAccount"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
+	if ua == nil {
+		return NewDomainError(fmt.Errorf("nil account query"), nil).SetLoc(errLoc).SetUsrMsg(invalid_account("getting nil account information"))
+	}
 	exists := 0
 	archive := false
 	if err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &exists); err != nil {
-		return NewDomainError(fmt.Errorf("failed: checking account duplicate %d", ua.TelegID), err).SetLoc("ElevateAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("adding new account information")).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+			"elevatn": ua.Elevtn,
+		})
 	}
 	if exists == 0 {
-		// account does not exists - error
-		return NewDomainError(fmt.Errorf("account not found registered  %d", ua.TelegID), nil).SetLoc("ElevateAccount").SetUsrMsg(ACC_MISSN)
+		return NewDomainError(ERR_ACCMISSIN, nil).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	if *ua.Elevtn < AccElev(User) || *ua.Elevtn > AccElev(Admin) {
-		// has to be between permissible limits
-		return NewDomainError(fmt.Errorf("requested account elevation is invalid %d", ua.Elevtn), nil).SetLoc("ElevateAccount").SetUsrMsg(INVLD_PARAM)
+		return NewDomainError(ERR_INVLPARAM, nil).SetLoc(errLoc).SetUsrMsg(elev_ceiling())
 	}
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Elevtn: ua.Elevtn}); err != nil {
-		// query error with adaptor, query has failed
-		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("ElevateAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("elevating  account role"))
 	}
-	// getting the updated account details
 	updated, err := iadp.GetOne(&UserAccount{TelegID: ua.TelegID}, reflect.TypeOf(&UserAccount{}))
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed query to get account %d", ua.TelegID), err).SetLoc("ElevateAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	// sending the updated account detatils
 	// FIXME: casting this into a type - this has some problems
@@ -140,30 +174,30 @@ func ElevateAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 // UpdateAccountEmail: changes the email attached to the account
 // Errors when account not found registered
 func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	errLoc := "UpdateAccountEmail"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
 	if ua == nil {
-		return NewDomainError(fmt.Errorf("nil account isnt a valid account"), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+		return NewDomainError(fmt.Errorf("nil account query"), nil).SetLoc(errLoc).SetUsrMsg(invalid_account("getting nil account information"))
 	} else if !REGX_EMAIL.MatchString(ua.Email) {
-		return NewDomainError(fmt.Errorf("email %s is invalid", ua.Email), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+		return NewDomainError(ERR_INVLPARAM, nil).SetLoc(errLoc).SetUsrMsg(invalid_account("updating account with invalid email")).SetLogEntry(log.Fields{"email": ua.Email})
 	}
 	exists := 0
 	archive := false
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &exists)
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed to check if the account is registered %d", ua.TelegID), err).SetLoc("UpdateAccountEmail").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{"telegid": ua.TelegID})
 	}
 	if exists == 0 {
-		return NewDomainError(fmt.Errorf("no account %d found registered", ua.TelegID), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(ACC_MISSN)
-	}
-	if ua.Email == "" || !REGX_EMAIL.MatchString(ua.Email) {
-		// has to be between permissible limits
-		return NewDomainError(fmt.Errorf("requested account email is invalid"), nil).SetLoc("UpdateAccountEmail").SetUsrMsg(INVLD_PARAM)
+		return NewDomainError(ERR_ACCMISSIN, nil).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{"telegid": ua.TelegID})
 	}
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Email: ua.Email}); err != nil {
-		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("UpdateAccountEmail").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("updating account information")).SetLogEntry(log.Fields{"telegid": ua.TelegID})
 	}
 	updated, err := iadp.GetOne(&UserAccount{TelegID: ua.TelegID}, reflect.TypeOf(&UserAccount{}))
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed query to get account %d", ua.TelegID), err).SetLoc("UpdateAccountEmail").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc("UpdateAccountEmail").SetUsrMsg(failed_query("getting account information")).SetLogEntry(log.Fields{"telegid": ua.TelegID})
 	}
 	x, _ := updated.(*UserAccount)
 	*ua = *x
@@ -173,19 +207,25 @@ func UpdateAccountEmail(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 // DeregisterAccount :  flagging the account as archived
 // Account information is never deleted since there is financial information connected to the account
 // account is marked archived only to omit it from all other searches and operations
+// Throws an error incase the db query fails or the account isnt found
 func DeregisterAccount(ua *UserAccount, iadp dbadp.DbAdaptor) error {
+	errLoc := "DeregisterAccount"
 	exists := 0
 	archive := false
 	err := iadp.GetCount(&UserAccount{TelegID: ua.TelegID, Archived: &archive}, &exists)
 	if err != nil {
-		return NewDomainError(fmt.Errorf("failed to check if the account is registered %d", ua.TelegID), err).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting account information"))
 	}
 	if exists == 0 {
-		return NewDomainError(fmt.Errorf("no account %d found registered", ua.TelegID), nil).SetLoc("DeregisterAccount").SetUsrMsg(ACC_MISSN)
+		return NewDomainError(ERR_ACCMISSIN, nil).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	archive = true
 	if err := iadp.UpdateOne(&UserAccount{TelegID: ua.TelegID}, &UserAccount{Archived: &archive}); err != nil {
-		return NewDomainError(fmt.Errorf("failed query to update  account %d", ua.TelegID), err).SetLoc("DeregisterAccount").SetUsrMsg(TRY_AGAIN)
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc("DeregisterAccount").SetUsrMsg(failed_query("de-registering account")).SetLogEntry(log.Fields{
+			"telegid": ua.TelegID,
+		})
 	}
 	return nil
 }

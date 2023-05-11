@@ -12,12 +12,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const (
-	INVL_EXPNS     = "one or more arguments of the command to record an expense is invalid. Kindly check & send again"
-	FAIL_QRY_EXPNS = "one or more internal operations on expense failed, if this continues we request you to contact the admin"
-	FAIL_GET_EXPNS = "failed to find expense, either an operation failed or there weren't any recorded expenses"
-)
-
 // daysInMonth: for any month this can give the utmost days in it
 // https://stackoverflow.com/questions/35182556/get-last-day-in-month-of-time-time
 func daysInMonth(month time.Month, year int) int {

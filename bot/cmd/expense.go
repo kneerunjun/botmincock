@@ -29,6 +29,7 @@ func (ebc *AddExpenseBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.RecordExpense(exp, ctx.DBAdp)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, ebc.ChatId, ebc.MsgId)
 	}
 	return resp.NewTextResponse(fmt.Sprintf("successfully recorded %s", exp.ToMsgTxt()), ebc.ChatId, ebc.MsgId)
@@ -51,6 +52,7 @@ func (eac *ExpenseAggBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.UserMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {
 		de := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, eac.ChatId, eac.MsgId)
 	}
 	// send new text response for the aggregated user monthly expense
@@ -77,6 +79,7 @@ func (aec *AllExpenseBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.TeamMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {
 		de := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, aec.ChatId, aec.MsgId)
 	}
 	// send new text response for the aggregated user monthly expense

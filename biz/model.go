@@ -51,8 +51,12 @@ type UserAccount struct {
 }
 
 func (ua *UserAccount) ToMsgTxt() string {
-	// https://stackoverflow.com/questions/3871729/transmitting-newline-character-n
-	return fmt.Sprintf("Hi,%s%%0AYou are registered with us%%0AEmail: %s%%0ATelegramID: %d", ua.Name, ua.Email, ua.TelegID)
+	/*
+		%%0A 	: new line character
+		%%09	: tab space
+		%c		: emoticon to appear correctly in chat
+	*/
+	return fmt.Sprintf("Hi, %s%%0A%c Registered with us%%0A%c%%09%s%%0A%c%%09%d%%0A%c%%09%s", ua.Name, EMOJI_greentick, EMOJI_email, ua.Email, EMOJI_badge, ua.TelegID, EMOJI_sheild, (*ua.Elevtn).Stringify())
 }
 
 // Transac :towards account maintenance - each row is a credit / debit attributed to the account

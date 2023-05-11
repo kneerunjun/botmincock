@@ -21,6 +21,7 @@ func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err := biz.AccountInfo(ua, ctx.DBAdp)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, eabc.ChatId, eabc.MsgId)
 	}
 	if *ua.Elevtn < biz.AccElev(biz.Admin) && eabc.SenderId != int64(5157350442) {
@@ -34,6 +35,7 @@ func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	err = biz.ElevateAccount(ua, ctx.DBAdp)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
+		de.LogE()
 		return resp.NewErrResponse(err, de.Loc, de.UserMsg, eabc.ChatId, eabc.MsgId)
 	}
 	return resp.NewTextResponse("Successfully elevated account", eabc.ChatId, eabc.MsgId)
