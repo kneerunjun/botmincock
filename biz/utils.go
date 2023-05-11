@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 )
 
 const (
@@ -96,3 +97,21 @@ var (
 	ERR_ACCMISSIN   = fmt.Errorf("account not found")
 	ERR_INVLPARAM   = fmt.Errorf("one or more params is invalid")
 )
+
+// daysInMonth: for any month this can give the utmost days in it
+// https://stackoverflow.com/questions/35182556/get-last-day-in-month-of-time-time
+func daysInMonth(month time.Month, year int) int {
+	switch month {
+	case time.April, time.June, time.September, time.November:
+		return 30
+	case time.February:
+		// Not all years that are divisible by 4 are leap years
+		// Those that are divisible by 4 but not by 100 or divisible by 400 are leap years
+		if year%4 == 0 && (year%100 != 0 || year%400 == 0) { // leap year
+			return 29
+		}
+		return 28 // not a leap year
+	default:
+		return 31
+	}
+}
