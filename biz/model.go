@@ -101,10 +101,10 @@ type MnthlyExpnsQry struct {
 func (ume *MnthlyExpnsQry) ToMsgTxt() string {
 	// https://stackoverflow.com/questions/3871729/transmitting-newline-character-n
 	if ume.TelegID != int64(0) {
-		return fmt.Sprintf("Account: %d%%0ATotal expenditure for %s totals to %.2f", ume.TelegID, ume.Dttm.Month().String(), ume.Total)
+		return fmt.Sprintf("Account: %d%%0ATotal expenditure for %s: %c%.2f", ume.TelegID, ume.Dttm.Month().String(), EMOJI_rupee, ume.Total)
 	} else {
 		// when what is needed is total expenses for the team
-		return fmt.Sprintf("Total team expenditure for %s totals to %.2f", ume.Dttm.Month().String(), ume.Total)
+		return fmt.Sprintf("Total team expenditure for %s: %c%.2f", ume.Dttm.Month().String(), EMOJI_rupee, ume.Total)
 	}
 
 }

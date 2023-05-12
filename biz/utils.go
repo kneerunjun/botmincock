@@ -47,6 +47,7 @@ var (
 	EMOJI_sheild, _    = strconv.ParseInt(strings.TrimPrefix("\\U1F6E1", "\\U"), 16, 32)
 	EMOJI_recycle, _   = strconv.ParseInt(strings.TrimPrefix("\\U267B", "\\U"), 16, 32)
 	EMOJI_wilted, _    = strconv.ParseInt(strings.TrimPrefix("\\U1F940", "\\U"), 16, 32)
+	EMOJI_rupee, _     = strconv.ParseInt(strings.TrimPrefix("\\U20B9", "\\U"), 16, 32)
 
 	REGX_EMAIL = regexp.MustCompile(`^[\w\d._]+@[\w]+.[\w\d]+$`)
 )
