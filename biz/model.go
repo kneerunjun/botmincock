@@ -63,8 +63,8 @@ func (ua *UserAccount) ToMsgTxt() string {
 // denormalized this has to be aggregated to see the balance of the account
 type Transac struct {
 	TelegID int64     `bson:"tid" json:"tid"`
-	Credit  float32   `bson:"credit,omitempty" json:"credit"`
-	Debit   float32   `bson:"debit,omitempty" json:"debit"`
+	Credit  float32   `bson:"credit" json:"credit"`
+	Debit   float32   `bson:"debit" json:"debit"`
 	Desc    string    `bson:"desc,omitempty" json:"desc"`
 	DtTm    time.Time `bson:"dttm" json:"dttm"`
 }
@@ -77,6 +77,10 @@ type Balance struct {
 	TelegID int64     `bson:"tid" json:"tid"`
 	Due     float32   `bson:"due"`
 	DtTm    time.Time `bson:"dttm"`
+}
+
+func (b *Balance) ToMsgTxt() string {
+	return fmt.Sprintf("Account balance %0.2f", b.Due)
 }
 
 // Start of each month the playdays are estimated from polls in the group

@@ -65,8 +65,28 @@ func TestAccountBalance(t *testing.T) {
 	assert.Equal(t, checkBal, bl.Due, "Checkbalance test failed")
 
 	/*====================
-	testing the pipe query here directly
+	now adding some noise to the data
 	====================*/
+	noise := []Transac{
+		{TelegID: 5157350449, Credit: 420, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 329, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 320, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 320, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 325, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 330, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Credit: 322, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350449, Debit: 321, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+	}
+	for _, d := range noise {
+		coll.Insert(d)
+	}
+	t.Log(infoMessage(fmt.Sprintf("Expected balance of the account is %f", checkBal)))
+	t.Log(infoMessage("Now testing a simple account balance with data noise"))
+	bl = &Balance{TelegID: 5157350442, DtTm: time.Now()}
+	err = MyDues(bl, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"))
+	assert.Nil(t, err, "Unexpected error when getting simple account balance")
+	assert.Equal(t, checkBal, bl.Due, "Checkbalance test failed")
+
 	/*====================
 	Cleaning up the database
 	====================*/

@@ -41,6 +41,7 @@ func ClearDues(tr *Transac, iadp dbadp.DbAdaptor) error {
 // bl		: in/out object for result and param of query
 // iadp		: database or any persistent storage adaptor
 func MyDues(bl *Balance, iadp dbadp.DbAdaptor) error {
+
 	errLoc := "MyDues"
 	if iadp == nil {
 		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
@@ -81,13 +82,17 @@ func MyDues(bl *Balance, iadp dbadp.DbAdaptor) error {
 	} // aggregating credits and debits for the account
 	project := bson.M{
 		"$project": bson.M{
-			"_id": 0,
-			"tid": 1,
+			"_id":  0,
+			"tid":  1,
+			"dttm": 1,
 			"due": bson.M{
 				"$subtract": []interface{}{"$credits", "$debits"},
 			},
 		},
 	} // projecting that to the balance object
-	iadp.Aggregate([]bson.M{match, group, project}, bl)
+	err = iadp.Aggregate([]bson.M{match, group, project}, bl)
+	if err != nil {
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting aggregate transactions for account"))
+	}
 	return nil
 }

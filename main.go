@@ -45,6 +45,7 @@ var (
 		*/
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>addexpense)(\s+)(?P<inr>[0-9]+)(\s+)(?P<desc>[^!@#\$%%\^&\*\(\\)\[\]\<\\>]*)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>paydues)(\s+)(?P<inr>[0-9]+)$`, os.Getenv("BOT_HANDLE"))),
+		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>mydues)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>myexpenses)$`, os.Getenv("BOT_HANDLE"))),
 		regexp.MustCompile(fmt.Sprintf(`^%s(\s+)\/(?P<cmd>allexpenses)$`, os.Getenv("BOT_HANDLE"))),
 		/*

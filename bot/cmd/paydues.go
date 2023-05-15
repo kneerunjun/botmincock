@@ -31,3 +31,21 @@ func (pdc *PayDuesBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 func (ebc *PayDuesBotCmd) CollName() string {
 	return "transacs"
 }
+
+type MyDuesBotCmd struct {
+	*AnyBotCmd
+}
+
+func (mdbc *MyDuesBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+	bal := &biz.Balance{TelegID: mdbc.SenderId, DtTm: time.Now()}
+	err := biz.MyDues(bal, ctx.DBAdp)
+	if err != nil {
+		de, _ := err.(*biz.DomainError)
+		de.LogE()
+		return resp.NewErrResponse(err, de.Loc, de.UserMsg, mdbc.ChatId, mdbc.MsgId)
+	}
+	return resp.NewTextResponse(bal.ToMsgTxt(), mdbc.ChatId, mdbc.MsgId)
+}
+func (mdbc *MyDuesBotCmd) CollName() string {
+	return "transacs"
+}
