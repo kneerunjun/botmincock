@@ -38,6 +38,7 @@ func AccountInfo(ua *UserAccount, iadp dbadp.DbAdaptor) error {
 		})
 	}
 	if count == 0 {
+		// When the account isnt found - this can reveal the telegid though
 		return NewDomainError(ERR_ACC404, nil).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
 			"telegid": ua.TelegID,
 		})

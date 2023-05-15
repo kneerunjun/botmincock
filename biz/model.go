@@ -66,7 +66,17 @@ type Transac struct {
 	Credit  float32   `bson:"credit,omitempty" json:"credit"`
 	Debit   float32   `bson:"debit,omitempty" json:"debit"`
 	Desc    string    `bson:"desc,omitempty" json:"desc"`
-	DtTm    time.Time `bson:"date" json:"date"`
+	DtTm    time.Time `bson:"dttm" json:"dttm"`
+}
+
+func (t *Transac) ToMsgTxt() string {
+	return fmt.Sprintf("%.2f(Cr) %0.2f(Dr) for account %d", t.Credit, t.Debit, t.TelegID)
+}
+
+type Balance struct {
+	TelegID int64     `bson:"tid" json:"tid"`
+	Due     float32   `bson:"due"`
+	DtTm    time.Time `bson:"dttm"`
 }
 
 // Start of each month the playdays are estimated from polls in the group

@@ -39,3 +39,7 @@ func (da *DummyAdaptor) GetCount(o interface{}, c *int) error {
 func (da *DummyAdaptor) Aggregate(p []bson.M, res interface{}) error {
 	return nil
 }
+
+func (da *DummyAdaptor) Switch(string) DbAdaptor {
+	return nil
+}

@@ -17,6 +17,64 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestAccountBalance(t *testing.T) {
+	/*====================
+	Setup and seeding the database
+	====================*/
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("transacs")
+	seed := []Transac{
+		{TelegID: 5157350442, Credit: 320, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 420, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 329, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 320, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 320, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 325, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 330, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 322, Debit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 321, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+		{TelegID: 5157350442, Debit: 100, Credit: 0.0, Desc: "sample test", DtTm: time.Now()},
+	}
+	credits := float32(0)
+	debits := float32(0)
+	for _, d := range seed {
+		if coll.Insert(d) == nil {
+			credits += d.Credit
+			debits += d.Debit
+		}
+	}
+	/*====================
+	Simple balance test for one account
+	====================*/
+	checkBal := credits - debits // check the result from the database against this value
+	t.Log(infoMessage(fmt.Sprintf("Expected balance of the account is %f", checkBal)))
+	t.Log(infoMessage("Now testing a simple account balance.."))
+	bl := &Balance{TelegID: 5157350442, DtTm: time.Now()}
+	err := MyDues(bl, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"))
+	assert.Nil(t, err, "Unexpected error when getting simple account balance")
+	assert.Equal(t, checkBal, bl.Due, "Checkbalance test failed")
+
+	/*====================
+	testing the pipe query here directly
+	====================*/
+	/*====================
+	Cleaning up the database
+	====================*/
+	t.Log(warnMessage("now clearing the database.."))
+	coll.RemoveAll(bson.M{})
+
+}
+
 func TestTeamMonthlyExpense(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
