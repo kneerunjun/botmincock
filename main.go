@@ -242,11 +242,19 @@ func main() {
 					}
 				}()
 			case updt := <-txtMsgs:
-				// parsing the updates
-				log.WithFields(log.Fields{
-					"text": updt.Message.Text,
-				}).Debug("Received a text command ..")
-				respChn <- resp.NewTextResponse("Thats a text command. Certain text I can recognise as commands for me", updt.Message.Chat.Id, updt.Message.Id)
+				go func() {
+					commnd, err := cmd.ParseTextCmd(updt, textCommands)
+					if err != nil {
+						respChn <- resp.NewErrResponse(err, "ParseTextCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
+					} else {
+						cmdcoll, ok := commnd.(cmd.CmdForColl)
+						if !ok {
+							respChn <- resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ParseTextCmd", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
+						} else {
+							respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
+						}
+					}
+				}()
 			case resp := <-respChn:
 				go func() {
 					// resp.Log()

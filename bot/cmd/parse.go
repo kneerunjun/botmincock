@@ -4,9 +4,27 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
 	"github.com/kneerunjun/botmincock/bot/updt"
 )
+
+// text_to_cmdargs : for a given pattern this will match the text and then for every subexpnames will form a key value pair
+// a single regexp that the text message matches to, the text message needs to be split into a key value pair
+// returns false incase the text expression does not match at all
+func text_to_cmdargs(pattrn *regexp.Regexp, text string, result *map[string]interface{}) bool {
+	*result = map[string]interface{}{} // new empty result
+	if !pattrn.MatchString(text) {
+		return false // pattern does not match at all
+	}
+	matches := pattrn.FindStringSubmatch(text)
+	for i, name := range pattrn.SubexpNames() {
+		if i != 0 && name != "" {
+			(*result)[name] = matches[i]
+		}
+	}
+	return true
+}
 
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
@@ -68,4 +86,22 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 	}
 	//no pattern could match the message for bot - perhaps is not a command
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
+}
+
+func ParseTextCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
+	// there arent too many components in the message that need to be
+	for _, pattrn := range botCmnds {
+		cmdArgs := map[string]interface{}{} // all that a command ever needs to execute and send a reponse
+		if text_to_cmdargs(pattrn, updt.Message.Text, &cmdArgs) {
+			anyCmd := &AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
+			cmd := strings.ToLower(cmdArgs["cmd"].(string))
+			switch cmd {
+			case "goodmorning", "good morning", "gm":
+				return &AttendanceBotCmd{AnyBotCmd: anyCmd}, nil
+			default:
+				return nil, fmt.Errorf("%s unrecognised command", cmdArgs["cmd"])
+			}
+		}
+	}
+	return nil, nil
 }

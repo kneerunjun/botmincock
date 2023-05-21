@@ -19,6 +19,13 @@ const (
 	INVLD_PARAM    = "One/more params for the command supplied is invalid, Please consult a sys-admin and then try again."
 )
 
+const (
+	/* Whenever marking a debit transaction for the playday this description would be useful to trace back
+	In a day you cannot have more than one attendance marked by the same account. A combination of date, telegid and desc is then used to see if the player has marked the playday already
+	*/
+	PLAYDAY_DESC = "playday"
+)
+
 /*====================
 a list of commonly used emoticons in telegram as variables
 - to add new emoticons : get the unicode from given reference url
@@ -97,6 +104,7 @@ var (
 	ERR_ACCREENABLE = fmt.Errorf("account found archived, now re-enabled")
 	ERR_ACCMISSIN   = fmt.Errorf("account not found")
 	ERR_INVLPARAM   = fmt.Errorf("one or more params is invalid")
+	ERR_DUPLTRANSAC = fmt.Errorf("A duplicate transaction was found for the same date")
 )
 
 // daysInMonth: for any month this can give the utmost days in it
@@ -115,4 +123,25 @@ func daysInMonth(month time.Month, year int) int {
 	default:
 		return 31
 	}
+}
+
+// todayAtSevenAM : while date is relevant for all the queries, time in the day isnt
+// when date-time becomes the field for sorting / querying we want all the entries to be at uniform times so that its easy to query
+// this is just time.Now() but with 07:00 as the time across the dates
+func TodayAtSevenAM() time.Time {
+	now := time.Now()
+	return time.Date(now.Year(), now.Month(), now.Day(), 7, 0, 0, 0, now.Location())
+}
+
+// TodayAsBoundary : for a given date - this will get the time with from-to boundary
+// Since when querying from Go, equal date comparison is not possible
+// if a record of a certain date is desired it has to be a range query between 00:00:00 - 23:59:59 for the same date
+// this utility function can get you the same
+// returns from, to a set of 2 times
+func TodayAsBoundary() (time.Time, time.Time) {
+	temp := time.Now()
+	yr := temp.Year()
+	mn := temp.Month()
+	loc := temp.Location()
+	return time.Date(yr, mn, temp.Day(), 0, 0, 0, 0, loc), time.Date(yr, mn, temp.Day(), 23, 59, 59, 0, loc) //start date for any month is 1
 }

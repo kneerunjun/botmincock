@@ -1,6 +1,7 @@
 package biz
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -16,6 +17,47 @@ const (
 	TEST_MONGO_DB   = "botmincock_test"
 	TEST_MONGO_COLL = "accounts"
 )
+
+/*
+====================
+TEST: this was to test getting the transactions based on date - direct query matching the date wasnt working
+coll.Find(bson.M{"dttm": time.Now()}) will not give expected results of date matching
+what works though is the comparison of date within a boundary $lte $gte
+If now we want all the transactions of a day we define a boundary from the start of the day time to end of the day time
+comparing the date field to be within the doundary works fine
+====================
+*/
+func TestMarkPlayDay(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: "botmincock",
+	})
+	coll := sess.DB("").C("transacs")
+	result := struct {
+		Count int `bson:"count"`
+	}{}
+	fromDt, toDt := TodayAsBoundary()
+	err := coll.Pipe([]bson.M{
+		{"$match": bson.M{"tid": 5157350442, "desc": PLAYDAY_DESC, "dttm": bson.M{
+			"$gte": fromDt,
+			"$lte": toDt,
+		}}},
+		{"$group": bson.M{
+			"_id":   nil,
+			"count": bson.M{"$sum": 1},
+		}},
+		{"$project": bson.M{
+			"_id": 0,
+		}},
+	}).One(&result)
+	if errors.Is(err, mgo.ErrNotFound) {
+		t.Log("there arent any transactions that qaulify")
+		return
+	}
+	assert.Nil(t, err, "Error getting the count of documents")
+	t.Log(result.Count)
+}
 
 func TestAccountBalance(t *testing.T) {
 	/*====================
