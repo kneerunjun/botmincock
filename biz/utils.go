@@ -145,3 +145,18 @@ func TodayAsBoundary() (time.Time, time.Time) {
 	loc := temp.Location()
 	return time.Date(yr, mn, temp.Day(), 0, 0, 0, 0, loc), time.Date(yr, mn, temp.Day(), 23, 59, 59, 0, loc) //start date for any month is 1
 }
+
+func MonthAsBoundary() (time.Time, time.Time) {
+	temp := time.Now()
+	yr := temp.Year()
+	mn := temp.Month()
+	loc := temp.Location()
+	return time.Date(yr, mn, 1, 0, 0, 0, 0, loc), time.Date(yr, mn, daysInMonth(mn, yr), 23, 59, 59, 0, loc)
+}
+
+// DaysBeforeMonthEnd: for the current month this returns the number of days left
+// typically used for calculating daily debits for playdays
+func DaysBeforeMonthEnd() int {
+	now := time.Now()
+	return daysInMonth(now.Month(), now.Year()) - now.Day() + 1 // including the todays day
+}

@@ -1,7 +1,6 @@
 package biz
 
 import (
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -18,6 +17,26 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestEstimatesInsert(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("estimates") // getting some dummy estimates into the database for this month
+	// before we begin with any test, clearing off the data from the previous test
+	coll.RemoveAll(bson.M{})
+	okData := []Estimate{
+		{TelegID: 5157350442, PlyDys: 31, DtTm: time.Now()},
+		{TelegID: 498116745, PlyDys: 15, DtTm: time.Now()},
+		{TelegID: 5116645118, PlyDys: 10, DtTm: time.Now()},
+		{TelegID: 961044876, PlyDys: 31, DtTm: time.Now()},
+	}
+	for _, d := range okData {
+		coll.Insert(d)
+	}
+}
+
 /*
 ====================
 TEST: this was to test getting the transactions based on date - direct query matching the date wasnt working
@@ -31,32 +50,44 @@ func TestMarkPlayDay(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
 		Timeout:  4 * time.Second,
-		Database: "botmincock",
+		Database: TEST_MONGO_DB,
 	})
 	coll := sess.DB("").C("transacs")
-	result := struct {
-		Count int `bson:"count"`
-	}{}
-	fromDt, toDt := TodayAsBoundary()
-	err := coll.Pipe([]bson.M{
-		{"$match": bson.M{"tid": 5157350442, "desc": PLAYDAY_DESC, "dttm": bson.M{
-			"$gte": fromDt,
-			"$lte": toDt,
-		}}},
-		{"$group": bson.M{
-			"_id":   nil,
-			"count": bson.M{"$sum": 1},
-		}},
-		{"$project": bson.M{
-			"_id": 0,
-		}},
-	}).One(&result)
-	if errors.Is(err, mgo.ErrNotFound) {
-		t.Log("there arent any transactions that qaulify")
-		return
+	coll.Insert(&Transac{TelegID: 498116745, Debit: float32(100.00), Desc: PLAYDAY_DESC, DtTm: time.Now()})
+	yes, err := IsPlayMarkedToday(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), 498116745)
+	assert.True(t, yes, "Unexpected false when finding player mark")
+	assert.Nil(t, err, "Unexpected err when IsPlayMarkedToday")
+	// Now lets try the same for an ID that hasnt marked the attendance
+	yes, err = IsPlayMarkedToday(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), 5116645118)
+	assert.False(t, yes, "Unexpected true when IsPlayMarkedToday")
+	assert.Nil(t, err, "Unexpected err when IsPlayMarkedToday")
+	coll.RemoveAll(bson.M{})
+}
+
+func TestTotalMonthlyPlayDebits(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("transacs")
+	okData := []int64{
+		498116745,
+		5157350442,
+		5116645118,
+		961044876,
 	}
-	assert.Nil(t, err, "Error getting the count of documents")
-	t.Log(result.Count)
+	checkTotal := float32(0)
+	for _, d := range okData {
+		coll.Insert(&Transac{TelegID: d, Debit: float32(100.00), Desc: PLAYDAY_DESC, DtTm: time.Now()})
+		checkTotal += float32(100.00)
+	}
+	total := float32(0)
+	err := TotalMonthlyPlayDebits(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), &total)
+	assert.Nil(t, err, "Unexpected error when TotalMonthlyPlayDebits")
+	assert.Equal(t, checkTotal, total, "Totals of the play debits do not match")
+	coll.RemoveAll(bson.M{})
+
 }
 
 func TestAccountBalance(t *testing.T) {

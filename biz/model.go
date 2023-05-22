@@ -87,10 +87,9 @@ func (b *Balance) ToMsgTxt() string {
 // each month - each acccount the play days help you arrive at the share holding of the account in the monthly expenditure
 // Estimates are pivotal to calculating the monthly paybacks or dues
 type Estimate struct {
-	TelegID int64  `bson:"tid" json:"tid"`
-	PlyDys  uint8  `bson:"plydys" json:"plydys"`
-	Month   uint8  `bson:"mnth" json:"mnth"`
-	Year    uint16 `bson:"yr" json:"yr"`
+	TelegID int64     `bson:"tid" json:"tid"`
+	PlyDys  uint8     `bson:"plydys" json:"plydys"`
+	DtTm    time.Time `bson:"dttm"`
 }
 
 // Any purchases on behalf of the bot as a manager by any account towards goods/services shared by the group is recorded as an expense
