@@ -4,9 +4,9 @@ services:
   mongostore:
     image: mongo:4.2-bionic
     ports:
-        - 27017:27017
+        - 37017:27017
     volumes: 
-      - /data/db:/data/db
+      - /data/botmincock:/data/db
     healthcheck:
       # NOTE: other services can only start running when this service is up and running
       # NOTE: other services will run this test to know if this service is up
@@ -42,7 +42,7 @@ services:
     stdin_open: true 
     tty: true
     container_name: ctn_botminc
-    entrypoint: ["${BINDIR}/botmincock", "-verbose=${VERBOSE}", "-flog=${FLOG}"]
+    entrypoint: ["${BINDIR}/botmincock", "-verbose=${VERBOSE}", "-flog=${FLOG}", "-seed=${SEED}"]
     secrets:
       - token_secret
 secrets:

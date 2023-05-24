@@ -1,21 +1,133 @@
 package biz
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/kneerunjun/botmincock/dbadp"
+	log "github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
 
 const (
-	TEST_MONGO_HOST = "localhost:27017"
+	TEST_MONGO_HOST = "localhost:37017"
 	TEST_MONGO_DB   = "botmincock_test"
 	TEST_MONGO_COLL = "accounts"
 )
+
+// TestAggrePlayerShare : from the estimates when we need the percentage of player contribution on any given day
+func TestAggrePlayerShare(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("estimates")
+	// Setting up the seed data
+	done_seeding := func() bool {
+		byt, err := readFromJsonF("../seeds/estimates.json")
+		if err != nil {
+			log.Error(err)
+			return false
+		}
+		data := struct {
+			Data []Estimate `json:"data"`
+		}{}
+		err = json.Unmarshal(byt, &data)
+		if err != nil {
+			return false
+		}
+		for idx, d := range data.Data {
+			if err := coll.Insert(d); err != nil {
+				log.Errorf("failed to insert data :%d", idx)
+				return false
+			}
+		}
+		return true
+	}
+	if !done_seeding() {
+		t.Error("failed to seed database")
+		return
+	}
+	result := struct {
+		Total int `bson:"total"`
+	}{}
+	totalPlayDays := func() int {
+		// this where we make calls to the database
+		from, to := MonthAsBoundary()
+		err := coll.Pipe([]bson.M{
+			{"$match": bson.M{
+				"dttm": bson.M{
+					"$gte": from,
+					"$lte": to,
+				},
+			}},
+			{"$group": bson.M{
+				"_id": nil,
+				"total": bson.M{
+					"$sum": "$plydys",
+				},
+			}},
+			{"$project": bson.M{
+				"_id": 0,
+			}},
+		}).One(&result)
+		if err != nil {
+			if errors.Is(err, mgo.ErrNotFound) {
+				return 0
+			}
+			return -1
+		}
+		return result.Total
+	}
+	tpd := totalPlayDays()
+	assert.True(t, tpd > 0, "unexpected value for the total play days")
+	t.Logf("Total playdays from the database %d", tpd)
+	// getting the committed hours for only the player
+	myPlayDays := func(tID int64) int {
+		from, to := MonthAsBoundary()
+		err := coll.Pipe([]bson.M{
+			{"$match": bson.M{
+				"dttm": bson.M{
+					"$gte": from,
+					"$lte": to,
+				},
+				"tid": tID, // this will get us only the player playdays
+			}},
+			{"$group": bson.M{
+				"_id": nil,
+				"total": bson.M{
+					"$sum": "$plydys",
+				},
+			}},
+			{"$project": bson.M{
+				"_id": 0,
+			}},
+		}).One(&result)
+		if err != nil {
+			if errors.Is(err, mgo.ErrNotFound) {
+				return 0
+			}
+			return -1
+		}
+		return result.Total
+	}
+	mpd := myPlayDays(1633242782)
+	assert.True(t, mpd > 0, "Unexpected number of the playdays for the player")
+	if mpd > 0 && tpd > 0 {
+		share := float32(mpd) / float32(tpd)
+		t.Logf("share of player in playday %f", share)
+	}
+	func() {
+		// flush test setup
+		coll.RemoveAll(bson.M{})
+	}()
+}
 
 func TestEstimatesInsert(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{

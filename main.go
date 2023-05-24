@@ -18,14 +18,16 @@ import (
 	"github.com/kneerunjun/botmincock/bot/resp"
 	"github.com/kneerunjun/botmincock/bot/updt"
 	"github.com/kneerunjun/botmincock/dbadp"
+	"github.com/kneerunjun/botmincock/seeds"
 	log "github.com/sirupsen/logrus"
 	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
 )
 
 var (
-	FVerbose, FLogF bool
-	logFile         string
-	allCommands     = []*regexp.Regexp{
+	FVerbose, FLogF, FSeed bool
+	logFile                string
+	allCommands            = []*regexp.Regexp{
 		/*
 			Registering new account
 			editing account email
@@ -78,6 +80,7 @@ func init() {
 	======================= */
 	flag.BoolVar(&FVerbose, "verbose", false, "Level of logging messages are set here")
 	flag.BoolVar(&FLogF, "flog", false, "Direction in which the log should output")
+	flag.BoolVar(&FSeed, "seed", false, "Flag if the db needs to be force seeded")
 	// Setting up log configuration for the api
 	log.SetFormatter(&log.TextFormatter{
 		DisableColors: false,
@@ -133,6 +136,52 @@ func main() {
 	}
 	mongoSession.SetMode(mgo.Monotonic, true)
 	log.Info("Now connected to the database..")
+
+	if FSeed {
+		log.Warn("Flushing data, and re-seeding it")
+		err, accs := seeds.Accounts("seeds/acc.json")
+		if err != nil {
+			log.Error(err)
+		} else {
+			mongoSession.DB(DB_NAME).C("accounts").RemoveAll(bson.M{})
+			for _, d := range accs {
+				mongoSession.DB(DB_NAME).C("accounts").Insert(d)
+			}
+			log.WithFields(log.Fields{
+				"count": len(accs),
+			}).Info("Seeded accounts")
+		}
+		err, ests := seeds.Estimates("seeds/estimates.json")
+		if err != nil {
+			log.Error(err)
+		} else {
+			mongoSession.DB(DB_NAME).C("estimates").RemoveAll(bson.M{})
+			for _, d := range ests {
+				mongoSession.DB(DB_NAME).C("estimates").Insert(d)
+			}
+		}
+
+		err, expns := seeds.Expenses("seeds/expense.json")
+		if err != nil {
+			log.Error(err)
+		} else {
+			mongoSession.DB(DB_NAME).C("expenses").RemoveAll(bson.M{})
+			for _, d := range expns {
+				mongoSession.DB(DB_NAME).C("expenses").Insert(d)
+			}
+		}
+
+		err, transacs := seeds.Transactions("seeds/transac.json")
+		if err != nil {
+			log.Error(err)
+		} else {
+			mongoSession.DB(DB_NAME).C("transacs").RemoveAll(bson.M{})
+			for _, d := range transacs {
+				mongoSession.DB(DB_NAME).C("transacs").Insert(d)
+			}
+		}
+
+	}
 	/* ============================
 	loading the secrets
 	- from files on the local repository to container secrets

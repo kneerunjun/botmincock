@@ -2,6 +2,8 @@ package biz
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -159,4 +161,20 @@ func MonthAsBoundary() (time.Time, time.Time) {
 func DaysBeforeMonthEnd() int {
 	now := time.Now()
 	return daysInMonth(now.Month(), now.Year()) - now.Day() + 1 // including the todays day
+}
+
+func readFromJsonF(path string) ([]byte, error) {
+	if f, err := os.Open(path); err == nil {
+		if f != nil {
+			if byt, err := ioutil.ReadAll(f); err == nil {
+				return byt, err
+			} else {
+				return nil, err
+			}
+		} else {
+			return nil, fmt.Errorf("invalid json file or problems opening the file %s", path)
+		}
+	} else {
+		return nil, fmt.Errorf("failed to open file %s", path)
+	}
 }
