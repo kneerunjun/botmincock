@@ -91,6 +91,10 @@ func gateway_fail() string {
 	return fmt.Sprintf("%c A gateway has failed, and hence aborting your command for now. Check with an admin", EMOJI_redcross)
 }
 
+func zero_playdays() string {
+	return fmt.Sprintf("%c Zero play days isnt something I expected, either nobody answered the poll or the data has gone bad.", EMOJI_warning)
+}
+
 /*====================
 error forming utility functions so that standardised errors are sent across the board when logged
 Error messages should be standardised
