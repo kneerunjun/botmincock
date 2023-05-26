@@ -63,6 +63,10 @@ func TestPlayerEstimates(t *testing.T) {
 		err := UpsertEstimate(d, adp)
 		assert.NotNil(t, err, "Uexpected nil error when upserting estimate")
 	}
+	// TEST: when the connection fails query error
+	noConnect := dbadp.NewMongoAdpator("loclhos:37017", TEST_MONGO_DB, "estimates")
+	err := UpsertEstimate(dataNotOK[0], noConnect)
+	assert.NotNil(t, err, "Unexpected nil err when connecting with bad connection")
 }
 
 // TestAggrePlayerShare : from the estimates when we need the percentage of player contribution on any given day

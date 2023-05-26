@@ -1,5 +1,12 @@
 package biz
 
+/* =================
+> Estimates are indicative player availability for the upcoming month
+> Estimates for each month let the bot decide on how to equitably divide the expenses for each day in the month
+> Estimates also help the bot to arrive at the recovery deficit for each day when a player who has promised to play does not play
+> Estimates once given can be changed, but only the debits ahead of the change will be affected
+================= */
+
 import (
 	"errors"
 	"fmt"
@@ -12,8 +19,9 @@ import (
 )
 
 // UpsertEstimate 	: Inserts or updates an estimate for the player only for the given month
-// incase the estimate is already added - this will error
-// Incase the db gateway fails the estimate will not be pushed
+// incase the estimate is already added - the estimate is updated
+// incase the playdays are invalid - error
+// Incase the db gateway fails - error
 func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 	errLoc := "UpsertEstimate"
 	est.DtTm = time.Now() // since the estimate is always for the current month only
@@ -25,14 +33,7 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 			"tid":      est.TelegID,
 		})
 	}
-	from, to := MonthAsBoundary()
-	selectPlayrEst := bson.M{
-		"dttm": bson.M{
-			"$gte": from,
-			"$lte": to,
-		},
-		"tid": est.TelegID,
-	} // for the current month this can select the player estimate
+	// If no record found for the player we add a new estimate
 	days, err := PlayerPlayDays(est.TelegID, iadp)
 	if err != nil { // cannot be the case when result.Total  ==0
 		if days == 0 {
@@ -43,6 +44,15 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 		}
 		return err
 	}
+	// If record found for the player, we update the estimate
+	from, to := MonthAsBoundary()
+	selectPlayrEst := bson.M{
+		"dttm": bson.M{
+			"$gte": from,
+			"$lte": to,
+		},
+		"tid": est.TelegID,
+	} // for the current month this can select the player estimate
 	// If there werent an error we just update
 	if err := iadp.UpdateOne(selectPlayrEst, bson.M{"plydys": est.PlyDys}); err != nil {
 		return NewDomainError(fmt.Errorf("failed UpsertEstimate"), err).SetLoc(errLoc).SetUsrMsg(failed_query("updating the estimates"))
@@ -114,7 +124,7 @@ func PlayerPlayDays(tID int64, iadp dbadp.DbAdaptor) (int, error) {
 	}, &result)
 	if err != nil {
 		if errors.Is(err, mgo.ErrNotFound) {
-			return 0, NewDomainError(fmt.Errorf("zero TotalPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
+			return 0, NewDomainError(fmt.Errorf("zero PlayerPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
 		}
 		return -1, NewDomainError(fmt.Errorf("failed PlayerPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(failed_query("getting the total monthly playdays"))
 	}
