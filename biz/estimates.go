@@ -26,9 +26,6 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 		})
 	}
 	from, to := MonthAsBoundary()
-	result := struct {
-		Total int `bson:"count"`
-	}{} // result of the query projected onto this i
 	selectPlayrEst := bson.M{
 		"dttm": bson.M{
 			"$gte": from,
@@ -36,29 +33,17 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 		},
 		"tid": est.TelegID,
 	} // for the current month this can select the player estimate
-	err := iadp.Aggregate([]bson.M{
-		{"$match": selectPlayrEst},
-		{"$group": bson.M{
-			"_id": nil,
-			"count": bson.M{
-				"$sum": 1,
-			},
-		}},
-		{"$project": bson.M{
-			"_id": 0,
-		}},
-	}, &result) // to get if the estimate is already added
+	days, err := PlayerPlayDays(est.TelegID, iadp)
 	if err != nil { // cannot be the case when result.Total  ==0
-		if errors.Is(err, mgo.ErrNotFound) {
-			// this is okay - we can then just add the estimate as a new one
+		if days == 0 {
 			if err := iadp.AddOne(est); err != nil {
 				return NewDomainError(fmt.Errorf("failed UpsertEstimate"), err).SetLoc(errLoc).SetUsrMsg(failed_query("adding the estimates"))
 			}
 			return nil
 		}
-		return NewDomainError(fmt.Errorf("failed UpsertEstimate"), err).SetLoc(errLoc).SetUsrMsg(failed_query("getting the player estimates"))
+		return err
 	}
-	// NOTE: if you have reached here it means the estimate needs an update
+	// If there werent an error we just update
 	if err := iadp.UpdateOne(selectPlayrEst, bson.M{"plydys": est.PlyDys}); err != nil {
 		return NewDomainError(fmt.Errorf("failed UpsertEstimate"), err).SetLoc(errLoc).SetUsrMsg(failed_query("updating the estimates"))
 	}
