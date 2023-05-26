@@ -53,6 +53,16 @@ func TestPlayerEstimates(t *testing.T) {
 		assert.Nil(t, err, "Uexpected error when getting estimate")
 		assert.Equal(t, d.PlyDys, days, "Unexpected play days for the user")
 	}
+
+	// TEST: now testing for data that is not that ok
+	dataNotOK := []*Estimate{
+		{TelegID: 5157350442, PlyDys: 32},
+		{TelegID: 5157350442, PlyDys: -1},
+	}
+	for _, d := range dataNotOK {
+		err := UpsertEstimate(d, adp)
+		assert.NotNil(t, err, "Uexpected nil error when upserting estimate")
+	}
 }
 
 // TestAggrePlayerShare : from the estimates when we need the percentage of player contribution on any given day

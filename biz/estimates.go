@@ -17,8 +17,8 @@ import (
 func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 	errLoc := "UpsertEstimate"
 	est.DtTm = time.Now() // since the estimate is always for the current month only
-	// checking to see if the estimate has 1 <= plydays >= max monthly days
-	if 1 > est.PlyDys || daysInMonth(est.DtTm.Month(), est.DtTm.Year()) < est.PlyDys {
+	// checking to see if the estimate has 0 <= plydays >= max monthly days
+	if 0 > est.PlyDys || daysInMonth(est.DtTm.Month(), est.DtTm.Year()) < est.PlyDys {
 		// invalid number of play days this needs to send back an error
 		return NewDomainError(fmt.Errorf("invalid number of play days in the estimate"), nil).SetLoc(errLoc).SetUsrMsg("Invalid play days for the estimate indicated, kindly check and send again").SetLogEntry(logrus.Fields{
 			"playdays": est.PlyDys,
@@ -56,7 +56,7 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 			}
 			return nil
 		}
-		return NewDomainError(fmt.Errorf("failed TotalPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(failed_query("getting the player estimates"))
+		return NewDomainError(fmt.Errorf("failed UpsertEstimate"), err).SetLoc(errLoc).SetUsrMsg(failed_query("getting the player estimates"))
 	}
 	// NOTE: if you have reached here it means the estimate needs an update
 	if err := iadp.UpdateOne(selectPlayrEst, bson.M{"plydys": est.PlyDys}); err != nil {
