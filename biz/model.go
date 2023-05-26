@@ -88,7 +88,7 @@ func (b *Balance) ToMsgTxt() string {
 // Estimates are pivotal to calculating the monthly paybacks or dues
 type Estimate struct {
 	TelegID int64     `bson:"tid" json:"tid"`
-	PlyDys  uint8     `bson:"plydys" json:"plydys"`
+	PlyDys  int       `bson:"plydys" json:"plydys"`
 	DtTm    time.Time `bson:"dttm"`
 }
 

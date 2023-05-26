@@ -20,6 +20,41 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestPlayerEstimates(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("estimates")
+	defer func() {
+		coll.RemoveAll(bson.M{}) // removing all the estimates inserted for the test purpose
+	}()
+	adp := dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "estimates")
+	now := time.Now()
+	data := []*Estimate{
+		{TelegID: 5157350442, PlyDys: daysInMonth(now.Month(), now.Year())},
+	}
+	for _, d := range data {
+		err := UpsertEstimate(d, adp)
+		assert.Nil(t, err, "Uexpected error when upserting estimate")
+		if err != nil {
+			return
+		}
+		//TEST: here we can test getting the player estimate as well
+		days, err := PlayerPlayDays(d.TelegID, adp)
+		assert.Nil(t, err, "Uexpected error when getting estimate")
+		assert.Equal(t, d.PlyDys, days, "Unexpected play days for the user")
+		// If estimate is already added, checking if it can be updated
+		d.PlyDys = 16
+		err = UpsertEstimate(d, adp)
+		assert.Nil(t, err, "Uexpected error when updating estimate")
+		days, err = PlayerPlayDays(d.TelegID, adp)
+		assert.Nil(t, err, "Uexpected error when getting estimate")
+		assert.Equal(t, d.PlyDys, days, "Unexpected play days for the user")
+	}
+}
+
 // TestAggrePlayerShare : from the estimates when we need the percentage of player contribution on any given day
 func TestAggrePlayerShare(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
