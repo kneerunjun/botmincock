@@ -213,16 +213,86 @@ func TestMarkPlayDay(t *testing.T) {
 		Timeout:  4 * time.Second,
 		Database: TEST_MONGO_DB,
 	})
-	coll := sess.DB("").C("transacs")
-	coll.Insert(&Transac{TelegID: 498116745, Debit: float32(100.00), Desc: PLAYDAY_DESC, DtTm: time.Now()})
-	yes, err := IsPlayMarkedToday(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), 498116745)
-	assert.True(t, yes, "Unexpected false when finding player mark")
-	assert.Nil(t, err, "Unexpected err when IsPlayMarkedToday")
-	// Now lets try the same for an ID that hasnt marked the attendance
-	yes, err = IsPlayMarkedToday(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), 5116645118)
-	assert.False(t, yes, "Unexpected true when IsPlayMarkedToday")
-	assert.Nil(t, err, "Unexpected err when IsPlayMarkedToday")
-	coll.RemoveAll(bson.M{})
+	accounts := sess.DB("").C("accounts")
+	accounts.RemoveAll(bson.M{}) // clearning the accounts before inserting them
+	expenses := sess.DB("").C("expenses")
+	expenses.RemoveAll(bson.M{})
+	estimates := sess.DB("").C("estimates")
+	estimates.RemoveAll(bson.M{})
+	transacs := sess.DB("").C("transacs")
+	transacs.RemoveAll(bson.M{})
+
+	// Inserting accounts to the database
+	archv := false
+	elev := AccElev(User)
+	data := []UserAccount{
+		{Elevtn: &elev, Name: "Parker Sunman", Archived: &archv, Email: "jdurrans0@slate.com", TelegID: 498116745},
+		{Elevtn: &elev, Name: "Helenelizabeth Grunson", Archived: &archv, Email: "aseller1@patch.com", TelegID: 5157350442},
+		{Elevtn: &elev, Name: "Marcella Haggath", Archived: &archv, Email: "gsellner2@ning.com", TelegID: 5116645118},
+		{Elevtn: &elev, Name: "Eldridge Baldinotti", Archived: &archv, Email: "gstarling3@earthlink.net", TelegID: 961044876},
+	}
+
+	for _, d := range data {
+		accounts.Insert(d)
+	}
+	count, _ := accounts.Count()
+	t.Log(infoMessage(fmt.Sprintf("We have about %d accounts in the test database", count)))
+	// Adding some expenses to the database
+
+	expData := []Expense{
+		{TelegID: 5157350442, DtTm: time.Now(), Desc: "Court bookings", INR: 10000},
+		{TelegID: 5157350442, DtTm: time.Now(), Desc: "Shuttles purchase", INR: 3800},
+	}
+	for _, d := range expData {
+		expenses.Insert(d)
+	}
+	count, _ = expenses.Count()
+	t.Log(infoMessage(fmt.Sprintf("We have about %d expenses in the test database", count)))
+	// Now adding the estimates to the setup
+
+	estData := []Estimate{
+		{TelegID: 5157350442, PlyDys: 31, DtTm: time.Now()},
+		{TelegID: 498116745, PlyDys: 15, DtTm: time.Now()},
+		{TelegID: 5116645118, PlyDys: 10, DtTm: time.Now()},
+		{TelegID: 961044876, PlyDys: 0, DtTm: time.Now()},
+	}
+	for _, d := range estData {
+		estimates.Insert(d)
+	}
+	count, _ = estimates.Count()
+	t.Log(infoMessage(fmt.Sprintf("We have about %d estimates in the test database", count)))
+
+	// Now we can proceed to mark the play days:
+	transacAdp := dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs")
+	now := time.Now()
+	testTransacs := []*Transac{
+		{TelegID: 5157350442, Desc: PLAYDAY_DESC, DtTm: now},
+		{TelegID: 498116745, Desc: PLAYDAY_DESC, DtTm: now},
+		{TelegID: 5116645118, Desc: PLAYDAY_DESC, DtTm: now},
+	}
+	for _, d := range testTransacs {
+		err := MarkPlayday(d, transacAdp)
+		assert.Nil(t, err, "Unexpected  error when marking the play day ")
+	}
+	// Inserting a few transactions from the previous day
+	transacs.RemoveAll(bson.M{}) // removing playday markings from the previous test
+	today := time.Now()
+	yesterday := today.Add(-24 * time.Hour)
+	previousData := []Transac{
+		{TelegID: 5157350442, Credit: 0.0, Debit: 100, Desc: PLAYDAY_DESC, DtTm: yesterday},
+		{TelegID: 498116745, Credit: 0.0, Debit: 100, Desc: PLAYDAY_DESC, DtTm: yesterday},
+		{TelegID: 5116645118, Credit: 0.0, Debit: 100, Desc: PLAYDAY_DESC, DtTm: yesterday},
+	}
+	for _, d := range previousData {
+		transacs.Insert(d)
+	}
+	count, _ = transacs.Count()
+	t.Log(infoMessage(fmt.Sprintf("We have about %d previous transactions", count)))
+	for _, d := range testTransacs {
+		// this would be different from the previous since there has been some recovery
+		err := MarkPlayday(d, transacAdp)
+		assert.Nil(t, err, "Unexpected  error when marking the play day ")
+	}
 }
 
 func TestTotalMonthlyPlayDebits(t *testing.T) {
@@ -244,7 +314,7 @@ func TestTotalMonthlyPlayDebits(t *testing.T) {
 		checkTotal += float32(100.00)
 	}
 	total := float32(0)
-	err := TotalMonthlyPlayDebits(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), &total)
+	err := RecoveryTillNow(dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"), &total)
 	assert.Nil(t, err, "Unexpected error when TotalMonthlyPlayDebits")
 	assert.Equal(t, checkTotal, total, "Totals of the play debits do not match")
 	coll.RemoveAll(bson.M{})

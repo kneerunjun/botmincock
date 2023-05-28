@@ -152,6 +152,19 @@ func TodayAsBoundary() (time.Time, time.Time) {
 	return time.Date(yr, mn, temp.Day(), 0, 0, 0, 0, loc), time.Date(yr, mn, temp.Day(), 23, 59, 59, 0, loc) //start date for any month is 1
 }
 
+// YdayAsBoundary: returns date set from start of the month to previous day as boundary, but if its the first of any month then will send nil?
+func YdayAsBoundary() (time.Time, time.Time) {
+	today := time.Now()
+	if today.Day() != 1 { // any other day of the month except the first day
+		// incase its the first day of the month we dont want to rollback to the previous month
+		yday := today.Add(-24 * time.Hour)
+		yr, mn, day := yday.Year(), yday.Month(), yday.Day()
+		from, _ := MonthAsBoundary()
+		return from, time.Date(yr, mn, day, 23, 59, 59, 0, yday.Location())
+	}
+	return time.Time{}, time.Time{} // if its first of any month - zero time
+}
+
 func MonthAsBoundary() (time.Time, time.Time) {
 	temp := time.Now()
 	yr := temp.Year()
