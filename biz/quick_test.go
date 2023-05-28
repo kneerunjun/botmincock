@@ -274,7 +274,10 @@ func TestMarkPlayDay(t *testing.T) {
 		err := MarkPlayday(d, transacAdp)
 		assert.Nil(t, err, "Unexpected  error when marking the play day ")
 	}
+	// TEST: Previous recovery fromplaydays
 	// Inserting a few transactions from the previous day
+	// this will help us test to know if previous recovery is calculated correctly,
+	// all the transactions until the previous  day are to be considered for recovery
 	transacs.RemoveAll(bson.M{}) // removing playday markings from the previous test
 	today := time.Now()
 	yesterday := today.Add(-24 * time.Hour)
@@ -292,6 +295,16 @@ func TestMarkPlayDay(t *testing.T) {
 		// this would be different from the previous since there has been some recovery
 		err := MarkPlayday(d, transacAdp)
 		assert.Nil(t, err, "Unexpected  error when marking the play day ")
+	}
+	// TEST: account does not exists
+	noAccount := []*Transac{
+		// accounts here arent registered at all
+		{TelegID: 6167350449, Credit: 0.0, Debit: 100, Desc: PLAYDAY_DESC, DtTm: time.Now()},
+	}
+	for _, d := range noAccount {
+		// this would be different from the previous since there has been some recovery
+		err := MarkPlayday(d, transacAdp)
+		assert.NotNil(t, err, "Unexpected nil error when marking playday - no account registry")
 	}
 }
 
