@@ -306,6 +306,12 @@ func TestMarkPlayDay(t *testing.T) {
 		err := MarkPlayday(d, transacAdp)
 		assert.NotNil(t, err, "Unexpected nil error when marking playday - no account registry")
 	}
+	// TEST: player is already marked for the playday
+	for _, d := range testTransacs {
+		// wouldnt allow any transactions as the player is already marked for attendance
+		err := MarkPlayday(d, transacAdp)
+		assert.NotNil(t, err, "Unexpected nil error whe marking duplicate transactions")
+	}
 }
 
 func TestTotalMonthlyPlayDebits(t *testing.T) {
