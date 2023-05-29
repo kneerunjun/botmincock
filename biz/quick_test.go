@@ -20,6 +20,11 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+func TestErrType(t *testing.T) {
+	err := ERR_ACC404
+	assert.True(t, errors.Is(err, ERR_ACC404), "Error comparison")
+}
+
 func TestPlayerEstimates(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
@@ -332,7 +337,7 @@ func TestMarkPlayDay(t *testing.T) {
 		Credit:  0.0,
 		Desc:    PLAYDAY_DESC,
 	}, transacAdp)
-	assert.Nil(t, err, "Unexpected error when adding transaction for player who has opted out of play")
+	assert.NotNil(t, err, "Unexpected nil err when player estimate is zero")
 }
 
 func TestTotalMonthlyPlayDebits(t *testing.T) {

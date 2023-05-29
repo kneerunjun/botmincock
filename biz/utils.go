@@ -94,6 +94,9 @@ func gateway_fail() string {
 func zero_playdays() string {
 	return fmt.Sprintf("%c Zero play days isnt something I expected, either nobody answered the poll or the data has gone bad.", EMOJI_warning)
 }
+func missing_estimate() string {
+	return fmt.Sprintf("%c Either you have opted out of play or havent answered the poll", EMOJI_warning)
+}
 
 /*====================
 error forming utility functions so that standardised errors are sent across the board when logged
@@ -101,16 +104,17 @@ Error messages should be standardised
 ====================*/
 
 var (
-	ERR_DBCONN      = fmt.Errorf("no adaptor connection, check if database is up")
-	ERR_NILACC      = fmt.Errorf("trying to query with nil account")
-	ERR_QRYFAIL     = fmt.Errorf("failed database query")
-	ERR_ACC404      = fmt.Errorf("account not found")
-	ERR_ACCFLD      = fmt.Errorf("one/more fields of the account is invalid")
-	ERR_ACCDUPLC    = fmt.Errorf("duplicate account")
-	ERR_ACCREENABLE = fmt.Errorf("account found archived, now re-enabled")
-	ERR_ACCMISSIN   = fmt.Errorf("account not found")
-	ERR_INVLPARAM   = fmt.Errorf("one or more params is invalid")
-	ERR_DUPLTRANSAC = fmt.Errorf("A duplicate transaction was found for the same date")
+	ERR_DBCONN       = fmt.Errorf("no adaptor connection, check if database is up")
+	ERR_NILACC       = fmt.Errorf("trying to query with nil account")
+	ERR_QRYFAIL      = fmt.Errorf("failed database query")
+	ERR_ACC404       = fmt.Errorf("account not found")
+	ERR_ACCFLD       = fmt.Errorf("one/more fields of the account is invalid")
+	ERR_ACCDUPLC     = fmt.Errorf("duplicate account")
+	ERR_ACCREENABLE  = fmt.Errorf("account found archived, now re-enabled")
+	ERR_ACCMISSIN    = fmt.Errorf("account not found")
+	ERR_INVLPARAM    = fmt.Errorf("one or more params is invalid")
+	ERR_DUPLTRANSAC  = fmt.Errorf("A duplicate transaction was found for the same date")
+	ERR_NOPLAYERESTM = fmt.Errorf("Player has opted not to play or to answer the poll, zero or missing estimate")
 )
 
 // daysInMonth: for any month this can give the utmost days in it

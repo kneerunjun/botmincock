@@ -227,12 +227,9 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 	if playerdays == 0 {
 		// this is when the player hasnt yet answered any poll , but yet wished GM
 		// or this is when player has voted out for play and still has tried to mark attendance
-		now := time.Now()
-		// BUG: when the player play days are zero this shoul send back an error, let the client code modify theplayer estimate and then again get the share
-		err := UpsertEstimate(&Estimate{TelegID: tr.TelegID, PlyDys: daysInMonth(now.Month(), now.Year()), DtTm: now}, iadp.Switch("estimates"))
-		if err != nil {
-			return err
-		}
+		return NewDomainError(ERR_NOPLAYERESTM, nil).SetLoc(errLoc).SetLogEntry(log.Fields{
+			"tid": tr.TelegID,
+		}).SetUsrMsg(missing_estimate())
 	}
 	if err != nil {
 		return err // case when query error
