@@ -312,6 +312,27 @@ func TestMarkPlayDay(t *testing.T) {
 		err := MarkPlayday(d, transacAdp)
 		assert.NotNil(t, err, "Unexpected nil error whe marking duplicate transactions")
 	}
+	// TEST: when there arent any etimates or estimates == 0
+	// this happens when either no one has answered the polls or everyone has opted out of play for the month
+	estimates.RemoveAll(bson.M{})
+	transacs.RemoveAll(bson.M{})
+	for _, d := range testTransacs {
+		// wouldnt allow any transactions as the player is already marked for attendance
+		err := MarkPlayday(d, transacAdp)
+		t.Log(err.Error())
+		assert.NotNil(t, err, "Unexpected nil error whe marking duplicate transactions")
+	}
+	// TEST: Now testing for when one of the player has opted for zero play days but has still sought to play in the month
+	for _, d := range estData {
+		estimates.Insert(d)
+	}
+	// 961044876  has opted out of play hence we try to add plyday transaction for this player
+	err := MarkPlayday(&Transac{
+		TelegID: 961044876,
+		Credit:  0.0,
+		Desc:    PLAYDAY_DESC,
+	}, transacAdp)
+	assert.Nil(t, err, "Unexpected error when adding transaction for player who has opted out of play")
 }
 
 func TestTotalMonthlyPlayDebits(t *testing.T) {

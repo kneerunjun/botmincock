@@ -181,13 +181,11 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 	accsColl := iadp.Switch("accounts")
 	ua := &UserAccount{TelegID: tr.TelegID}
 	err := AccountInfo(ua, accsColl)
-	// TEST: when no supporting account underneath
 	if err != nil {
 		return NewDomainError(ERR_ACC404, err).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
 			"telegid": ua.TelegID,
 		})
 	}
-	// TEST: when the player is already marked for the day
 	yes, err := IsPlayMarkedToday(iadp, tr.TelegID)
 	if err != nil {
 		return err
@@ -230,6 +228,7 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 		// this is when the player hasnt yet answered any poll , but yet wished GM
 		// or this is when player has voted out for play and still has tried to mark attendance
 		now := time.Now()
+		// BUG: when the player play days are zero this shoul send back an error, let the client code modify theplayer estimate and then again get the share
 		err := UpsertEstimate(&Estimate{TelegID: tr.TelegID, PlyDys: daysInMonth(now.Month(), now.Year()), DtTm: now}, iadp.Switch("estimates"))
 		if err != nil {
 			return err
@@ -238,7 +237,6 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 	if err != nil {
 		return err // case when query error
 	}
-	// TEST: when there are already some debits in the database
 	playerShare := float32(playerdays) / float32(days) // ratio of player contribution when getting the debit
 	mnthEquity := (expQ.Total - recovery) / float32(DaysBeforeMonthEnd())
 	tr.Debit = mnthEquity * playerShare // for the time being lets assume we have only one player
