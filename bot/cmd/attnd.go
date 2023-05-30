@@ -14,6 +14,14 @@ type AttendanceBotCmd struct {
 	*AnyBotCmd
 }
 
+func uponErr(chatid, msgid int64) func(error) *resp.ErrBotResp {
+	return func(err error) *resp.ErrBotResp {
+		de := err.(*biz.DomainError)
+		de.LogE()
+		return resp.NewErrResponse(de, de.Loc, de.UserMsg, chatid, msgid)
+	}
+}
+
 // Execute : Will mark the player as attended for the day, and make the relavant debits
 // checks for the accounts, if not registered will err
 // gets the total expenses, recovered expenses
@@ -21,25 +29,24 @@ type AttendanceBotCmd struct {
 // sends exact debit transaction
 func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	// Getting handles to all the datatbase connections
-	accsColl := ctx.DBAdp.Switch("accounts")
+	accounts := ctx.DBAdp.Switch("accounts")
 	transacs := ctx.DBAdp.Switch("transacs")
 	estimates := ctx.DBAdp.Switch("estimates")
 	expenses := ctx.DBAdp.Switch("expenses")
 	debit := &biz.Transac{TelegID: abc.SenderId, Desc: biz.PLAYDAY_DESC, DtTm: biz.TodayAtSevenAM(), Credit: 0.0}
+	upon_err := uponErr(abc.ChatId, abc.MsgId)
 	/* =====================
 	- 	Checking to see if the account is registered
 	-	Checking to see if the user hasnt marked his attendance for the day
 	=====================*/
 	ua := &biz.UserAccount{TelegID: abc.SenderId}
-	err := biz.AccountInfo(ua, accsColl)
+	err := biz.AccountInfo(ua, accounts)
 	if err != nil {
-		de, _ := err.(*biz.DomainError)
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	} // this in case when the account isnt registered
 	_, err = biz.IsPlayMarkedToday(transacs, abc.SenderId)
 	if err != nil {
-		de, _ := err.(*biz.DomainError)
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	} // emits error when the player yes == true
 	/* =====================
 	- Getting total estimates
@@ -49,8 +56,6 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
 		if errors.Is(de.Err, biz.ERR_NOPLAYERESTM) {
-			// NOTE:  player has either not responded to the poll or is out from the estimation
-			// A flat default debit would be applied
 			gc := os.Getenv("GUEST_CHARGE")
 			guestCharge := 0.0
 			if gc == "" {
@@ -59,18 +64,16 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 				guestCharge, _ = strconv.ParseFloat(gc, 64)
 			}
 			debit.Debit = float32(guestCharge)
-			biz.MarkPlayday(debit, transacs)
+			if err := biz.MarkPlayday(debit, transacs); err != nil {
+				return upon_err(err)
+			}
 		} else {
-			return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+			return upon_err(err)
 		}
 	}
 	days, err := biz.TotalPlayDays(estimates)
 	if err != nil {
-		// NOTE: incase the days are zero, the function still returns an error
-		// days =0 would mean everyone has either opted out of play or no one has yet answered the poll
-		// either of the cases this has to be flagged as an error
-		de, _ := err.(*biz.DomainError)
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	}
 	/* =====================
 	- Getting expenses and recoveries
@@ -78,24 +81,21 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	expQ := biz.MnthlyExpnsQry{TelegID: abc.SenderId, Dttm: time.Now()}
 	err = biz.TeamMonthlyExpense(&expQ, expenses)
 	if err != nil {
-		de, _ := err.(*biz.DomainError)
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	}
 	recovery := float32(0.0)
 	biz.RecoveryTillNow(transacs, &recovery) // debits are only play debits
 	if err != nil {
-		de, _ := err.(*biz.DomainError)
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	}
-
-	playerShare := float32(playerdays) / float32(days) // ratio of player contribution when getting the debit
-	mnthEquity := (expQ.Total - recovery) / float32(biz.DaysBeforeMonthEnd())
-	// Playday transactions are marked at 07:00 am with date as today , so as to be easy to query later
+	/* calculating the actual player debit
+	marking the attendance with appropriate debit
+	*/
+	playerShare := float32(playerdays) / float32(days)                        // ratio of player contribution when getting the debit
+	mnthEquity := (expQ.Total - recovery) / float32(biz.DaysBeforeMonthEnd()) // Playday transactions are marked at 07:00 am
 	debit.Debit = mnthEquity * playerShare
 	if err := biz.MarkPlayday(debit, ctx.DBAdp); err != nil {
-		de, _ := err.(*biz.DomainError)
-		de.LogE()
-		return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
+		return upon_err(err)
 	}
 	return resp.NewTextResponse("Thanks, marked your attendance", abc.ChatId, abc.MsgId)
 }

@@ -2,7 +2,6 @@ package biz
 
 import (
 	"errors"
-	"math"
 	"time"
 
 	"github.com/kneerunjun/botmincock/dbadp"
@@ -169,31 +168,11 @@ func RecoveryTillNow(iadp dbadp.DbAdaptor, total *float32) error {
 // MarkPlayday: For every day that a player sends a certain message as GM - we expect the bot to insert new debit transaction
 // tr 		: transaction object that shall determine the date, telegid of the transaction. INR value of the transaction is determined by the playshare and the expenses
 func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
-	/*====================
-	incase no connection to datbase
-	incase the account does not exists - playday cannot be marked
-	incase the player has already marked he cannot mark again
-	====================*/
 	errLoc := "MarkPlayday"
 	if iadp == nil {
 		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
 	}
-
-	/*====================
-	Trying to get exact amount that shall be debited for the transaction
-	((Totalmonthly expenses - recovery) / daysBeforeMonthEnd)*ratioOfPlayerContriThisMonth
-	====================*/
-
-	tr.Debit = mnthEquity * playerShare // for the time being lets assume we have only one player
-	tr.Debit = float32(math.Round(float64(tr.Debit)))
-	log.WithFields(log.Fields{
-		"total_expense":   expQ.Total,
-		"recovery":        recovery,
-		"equity":          mnthEquity,
-		"player_share":    playerShare,
-		"days_before_eom": DaysBeforeMonthEnd(),
-	}).Debug("dayshare")
-	err = iadp.AddOne(tr)
+	err := iadp.AddOne(tr)
 	if err != nil {
 		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(FAIL_QRY_EXPNS).SetLogEntry(log.Fields{
 			"inr":     tr.Debit,
