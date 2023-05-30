@@ -39,6 +39,7 @@ services:
       - BOT_HANDLE=${BOT_HANDLE}
       - BOT_NAME=${BOT_NAME}
       - PSABADMIN_GRP=${PSABADMIN_GRP}
+      - GUEST_CHARGE=${GUEST_CHARGE}
     stdin_open: true 
     tty: true
     container_name: ctn_botminc

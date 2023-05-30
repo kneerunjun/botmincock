@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"errors"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
@@ -49,7 +51,14 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 		if errors.Is(de.Err, biz.ERR_NOPLAYERESTM) {
 			// NOTE:  player has either not responded to the poll or is out from the estimation
 			// A flat default debit would be applied
-			debit.Debit = float32(150.00)
+			gc := os.Getenv("GUEST_CHARGE")
+			guestCharge := 0.0
+			if gc == "" {
+				guestCharge = 110.00 // nominal charge if guest charge variale isnt loaded on environment
+			} else {
+				guestCharge, _ = strconv.ParseFloat(gc, 64)
+			}
+			debit.Debit = float32(guestCharge)
 			biz.MarkPlayday(debit, transacs)
 		} else {
 			return resp.NewErrResponse(err, de.Loc, de.UserMsg, abc.ChatId, abc.MsgId)
