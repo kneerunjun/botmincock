@@ -2,7 +2,6 @@ package biz
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"time"
 
@@ -103,6 +102,7 @@ func MyDues(bl *Balance, iadp dbadp.DbAdaptor) error {
 
 // IsPlayMarkedToday : for the given Telegram id this can find from the transactions if the player has already marked his attendance
 // returns error if the query fails
+// also returns an error when player found attended, check for ERR_DUPLTRANSAC for knowing what type of error it is
 func IsPlayMarkedToday(iadp dbadp.DbAdaptor, tid int64) (bool, error) {
 	errLoc := "IsPlayMarkedToday"
 	result := struct {
@@ -128,7 +128,7 @@ func IsPlayMarkedToday(iadp dbadp.DbAdaptor, tid int64) (bool, error) {
 		}
 		return false, NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(failed_query("getting user's attendance"))
 	}
-	return result.Count > 0, nil
+	return result.Count > 0, NewDomainError(ERR_DUPLTRANSAC, err).SetLoc(errLoc).SetUsrMsg(duplc_attend())
 }
 
 // RecoveryTillNow : gets the monthly debits for the entire team till date only for the playday
@@ -178,64 +178,12 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 	if iadp == nil {
 		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
 	}
-	accsColl := iadp.Switch("accounts")
-	ua := &UserAccount{TelegID: tr.TelegID}
-	err := AccountInfo(ua, accsColl)
-	if err != nil {
-		return NewDomainError(ERR_ACC404, err).SetLoc(errLoc).SetUsrMsg(account_notfound(ua.TelegID)).SetLogEntry(log.Fields{
-			"telegid": ua.TelegID,
-		})
-	}
-	yes, err := IsPlayMarkedToday(iadp, tr.TelegID)
-	if err != nil {
-		return err
-	}
-	if yes {
-		return NewDomainError(ERR_DUPLTRANSAC, nil).SetLoc(errLoc).SetUsrMsg("You seemed to have already marked your attendance for today").SetLogEntry(log.Fields{
-			"telegid": tr.TelegID,
-		})
-	}
+
 	/*====================
 	Trying to get exact amount that shall be debited for the transaction
 	((Totalmonthly expenses - recovery) / daysBeforeMonthEnd)*ratioOfPlayerContriThisMonth
 	====================*/
-	expQ := MnthlyExpnsQry{TelegID: tr.TelegID, Dttm: time.Now()}
-	err = TeamMonthlyExpense(&expQ, iadp.Switch("expenses"))
-	if err != nil {
-		return err
-	}
-	recovery := float32(0.0)
-	RecoveryTillNow(iadp, &recovery) // debits are only play debits
-	if err != nil {
-		return err
-	}
-	days, err := TotalPlayDays(iadp.Switch("estimates"))
-	// TEST: when the total play days are 0
-	// everyone has voted out for play, or the poll has not been answered at all
-	if days == 0 {
-		// Either no one voted on the poll
-		// Or everyone opted NOT to play this month
-		// TODO: make this error more relevant add user message
-		return NewDomainError(fmt.Errorf("0 play days estimated, someone just marked attendance without anyone giving estimates"), nil)
-	}
-	if err != nil {
-		return err // case when query error
-	}
-	playerdays, err := PlayerPlayDays(tr.TelegID, iadp.Switch("estimates"))
-	// TEST: when the player has opted out to play or hasnt answered the polls
-	// either of the cases - when the player then marks his attendance the estimate would be modified
-	if playerdays == 0 {
-		// this is when the player hasnt yet answered any poll , but yet wished GM
-		// or this is when player has voted out for play and still has tried to mark attendance
-		return NewDomainError(ERR_NOPLAYERESTM, nil).SetLoc(errLoc).SetLogEntry(log.Fields{
-			"tid": tr.TelegID,
-		}).SetUsrMsg(missing_estimate())
-	}
-	if err != nil {
-		return err // case when query error
-	}
-	playerShare := float32(playerdays) / float32(days) // ratio of player contribution when getting the debit
-	mnthEquity := (expQ.Total - recovery) / float32(DaysBeforeMonthEnd())
+
 	tr.Debit = mnthEquity * playerShare // for the time being lets assume we have only one player
 	tr.Debit = float32(math.Round(float64(tr.Debit)))
 	log.WithFields(log.Fields{

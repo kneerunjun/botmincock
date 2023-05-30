@@ -98,6 +98,10 @@ func missing_estimate() string {
 	return fmt.Sprintf("%c Either you have opted out of play or havent answered the poll", EMOJI_warning)
 }
 
+func duplc_attend() string {
+	return fmt.Sprintf("%c You seem to have already marked your attendance?", EMOJI_warning)
+}
+
 /*====================
 error forming utility functions so that standardised errors are sent across the board when logged
 Error messages should be standardised

@@ -61,7 +61,7 @@ func UpsertEstimate(est *Estimate, iadp dbadp.DbAdaptor) error {
 }
 
 // TotalPlayDays 	: for the given month the play day estimates are summed up, this is useful when getting the player contribution ratio
-// 0, err 			: no records found, implies for the given month either the poll wasnt published or no one answered the poll
+// 0, err 			: no records found, implies for the given month everyone has opeted out of play or no one answered the poll
 // -1, err			: error in getting records, gateway query failed.
 func TotalPlayDays(iadp dbadp.DbAdaptor) (int, error) {
 	errLoc := "TotalPlayDays"
@@ -91,6 +91,10 @@ func TotalPlayDays(iadp dbadp.DbAdaptor) (int, error) {
 			return 0, NewDomainError(fmt.Errorf("zero TotalPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
 		}
 		return -1, NewDomainError(fmt.Errorf("failed TotalPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(failed_query("getting the total monthly playdays"))
+	}
+	if result.Total == 0 {
+		// when everyone has opted out of play
+		return 0, NewDomainError(fmt.Errorf("zero TotalPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
 	}
 	return result.Total, nil
 }
@@ -124,9 +128,12 @@ func PlayerPlayDays(tID int64, iadp dbadp.DbAdaptor) (int, error) {
 	}, &result)
 	if err != nil {
 		if errors.Is(err, mgo.ErrNotFound) {
-			return 0, NewDomainError(fmt.Errorf("zero PlayerPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
+			return 0, NewDomainError(ERR_NOPLAYERESTM, nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
 		}
 		return -1, NewDomainError(fmt.Errorf("failed PlayerPlayDays"), nil).SetLoc(errLoc).SetUsrMsg(failed_query("getting the total monthly playdays"))
+	}
+	if result.Total == 0 {
+		return 0, NewDomainError(ERR_NOPLAYERESTM, nil).SetLoc(errLoc).SetUsrMsg(zero_playdays())
 	}
 	return result.Total, nil
 }
