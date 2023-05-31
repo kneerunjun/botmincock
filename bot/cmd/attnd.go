@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -52,6 +53,14 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	- Getting total estimates
 	- Getting the individual estimates
 	===================== */
+	// IMP: Its vital that we get the TotalPlayDays before we get PlayerPlayDays
+	// Since in the case when everyone has opted out of play, then the first one to mark the attendance woudl be actually charged the default amount
+	// When no one is playing, no one will charged, not matter how many times one marks the attendance
+	// only when atleast one is playing and a player without estimates joins in, will he be charged default amount
+	days, err := biz.TotalPlayDays(estimates)
+	if err != nil {
+		return upon_err(err)
+	}
 	playerdays, err := biz.PlayerPlayDays(abc.SenderId, estimates)
 	if err != nil {
 		de, _ := err.(*biz.DomainError)
@@ -66,14 +75,12 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 			debit.Debit = float32(guestCharge)
 			if err := biz.MarkPlayday(debit, transacs); err != nil {
 				return upon_err(err)
+			} else {
+				return resp.NewTextResponse(fmt.Sprintf("%c Default attendance applied", biz.EMOJI_greentick), abc.ChatId, abc.MsgId)
 			}
 		} else {
 			return upon_err(err)
 		}
-	}
-	days, err := biz.TotalPlayDays(estimates)
-	if err != nil {
-		return upon_err(err)
 	}
 	/* =====================
 	- Getting expenses and recoveries
@@ -83,7 +90,7 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	if err != nil {
 		return upon_err(err)
 	}
-	recovery := float32(0.0)
+	var recovery float32
 	biz.RecoveryTillNow(transacs, &recovery) // debits are only play debits
 	if err != nil {
 		return upon_err(err)
@@ -97,7 +104,7 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	if err := biz.MarkPlayday(debit, ctx.DBAdp); err != nil {
 		return upon_err(err)
 	}
-	return resp.NewTextResponse("Thanks, marked your attendance", abc.ChatId, abc.MsgId)
+	return resp.NewTextResponse(fmt.Sprintf("%c Noted", biz.EMOJI_greentick), abc.ChatId, abc.MsgId)
 }
 
 func (abc *AttendanceBotCmd) CollName() string {
