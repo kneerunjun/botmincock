@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"strconv"
 	"time"
@@ -76,7 +77,7 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 			if err := biz.MarkPlayday(debit, transacs); err != nil {
 				return upon_err(err)
 			} else {
-				return resp.NewTextResponse(fmt.Sprintf("%c Default attendance applied", biz.EMOJI_greentick), abc.ChatId, abc.MsgId)
+				return resp.NewTextResponse(fmt.Sprintf("%c You would be charged a default of %.2f INR/day", biz.EMOJI_greentick, guestCharge), abc.ChatId, abc.MsgId)
 			}
 		} else {
 			return upon_err(err)
@@ -101,6 +102,7 @@ func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	playerShare := float32(playerdays) / float32(days)                        // ratio of player contribution when getting the debit
 	mnthEquity := (expQ.Total - recovery) / float32(biz.DaysBeforeMonthEnd()) // Playday transactions are marked at 07:00 am
 	debit.Debit = mnthEquity * playerShare
+	debit.Debit = float32(math.Round(float64(debit.Debit)))
 	if err := biz.MarkPlayday(debit, ctx.DBAdp); err != nil {
 		return upon_err(err)
 	}
