@@ -89,4 +89,13 @@ func TestAttendCmd(t *testing.T) {
 	cmd = &AttendanceBotCmd{AnyBotCmd: anyCmd}
 	resp = cmd.Execute(&CmdExecCtx{DBAdp: adp})
 	assert.Equal(t, "*resp.TxtBotResp", reflect.TypeOf(resp).String(), "Unexpected type of response")
+
+	// TEST: recovery till now should give back 0 since its 01-JUN
+	transacs.RemoveAll(bson.M{}) // clearing all transactions
+
+	anyCmd = &AnyBotCmd{MsgId: 454839589, ChatId: 5435435875, SenderId: 5157350442}
+	cmd = &AttendanceBotCmd{AnyBotCmd: anyCmd}
+	resp = cmd.Execute(&CmdExecCtx{DBAdp: adp})
+	assert.Equal(t, "*resp.TxtBotResp", reflect.TypeOf(resp).String(), "Unexpected type of response")
+	t.Log(resp.UserMessage())
 }
