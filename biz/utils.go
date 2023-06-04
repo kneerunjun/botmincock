@@ -119,6 +119,7 @@ var (
 	ERR_INVLPARAM    = fmt.Errorf("one or more params is invalid")
 	ERR_DUPLTRANSAC  = fmt.Errorf("A duplicate transaction was found for the same date")
 	ERR_NOPLAYERESTM = fmt.Errorf("Player has opted not to play or to answer the poll, zero or missing estimate")
+	ERR_NOPLAY       = fmt.Errorf("Either everyone opted out of play, zero play debits")
 )
 
 // daysInMonth: for any month this can give the utmost days in it

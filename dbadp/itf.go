@@ -18,6 +18,7 @@ type DbAdaptor interface {
 	AddOne(interface{}) error
 	RemoveOne(interface{}) error
 	UpdateOne(interface{}, interface{}) error
+	UpdateBulk(selectr, patch interface{}) (int, error)
 	GetOne(interface{}, reflect.Type) (interface{}, error)
 	GetCount(interface{}, *int) error
 	Aggregate(p []bson.M, res interface{}) error

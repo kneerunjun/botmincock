@@ -182,3 +182,95 @@ func MarkPlayday(tr *Transac, iadp dbadp.DbAdaptor) error {
 	}
 	return nil
 }
+
+// TotalPlaydayDebits : for the given time span, all the debits for playday debits
+// Incase there arent any play day debits in the given span then does NOT error but sends back the Debits =0
+// Error when query encounters errors
+func TotalPlaydayDebits(trq *TransacQ, iadp dbadp.DbAdaptor) error {
+	errLoc := "RecoveryToday"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
+	result := struct {
+		TotalDebits float32 `bson:"debits"`
+	}{}
+	err := iadp.Aggregate([]bson.M{
+		{"$match": bson.M{
+			"desc": PLAYDAY_DESC,
+			"dttm": bson.M{
+				"$gte": trq.From,
+				"$lte": trq.To,
+			},
+		}}, // all the transactions for the month marked as playday
+		{"$group": bson.M{
+			"_id":    0,
+			"debits": bson.M{"$sum": "$debit"},
+		}}, // summing the debits of all such transactions
+	}, &result)
+	if err != nil {
+		if errors.Is(err, mgo.ErrNotFound) {
+			trq.Debits = 0.0
+			return nil
+		}
+		return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(FAIL_QRY_EXPNS)
+	}
+	trq.Debits = result.TotalDebits
+	return nil
+}
+
+// AttendedToday : gets the total number of attendees for today
+// Error only when the query fails
+func AttendedToday(iadp dbadp.DbAdaptor) (int, error) {
+	errLoc := "AttendedToday"
+	if iadp == nil {
+		return 0, NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
+	result := struct {
+		Count int `bson:"total"`
+	}{}
+	from, to := TodayAsBoundary()
+	err := iadp.Aggregate([]bson.M{
+		{"$match": bson.M{
+			"desc": PLAYDAY_DESC,
+			"dttm": bson.M{
+				"$gte": from,
+				"$lte": to,
+			},
+		}}, // all the transactions for the month marked as playday
+		{"$group": bson.M{
+			"_id":   0,
+			"total": bson.M{"$sum": 1},
+		}}, // summing the debits of all such transactions
+	}, &result)
+	if err != nil {
+		if errors.Is(err, mgo.ErrNotFound) {
+			return 0, nil
+		}
+		return 0, NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(FAIL_QRY_EXPNS)
+	}
+	return result.Count, nil
+}
+
+// AdjustDayDebit : for the given adjustment this will find all the day debits and update their debits
+func AdjustDayDebit(trq *TransacQ, iadp dbadp.DbAdaptor) error {
+	errLoc := "AdjustDayDebit"
+	if iadp == nil {
+		return NewDomainError(ERR_DBCONN, nil).SetLoc(errLoc).SetUsrMsg(gateway_fail())
+	}
+	slctr := bson.M{
+		"desc": PLAYDAY_DESC,
+		"dttm": bson.M{
+			"$gte": trq.From,
+			"$lte": trq.To,
+		},
+	}
+	return func() error {
+		patch := bson.M{
+			"$inc": bson.M{"$debit": trq.Debits},
+		}
+		if _, err := iadp.UpdateBulk(slctr, patch); err != nil {
+			return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(FAIL_QRY_EXPNS)
+		}
+		return nil
+	}() // distributing the deficits equally among all the attendees
+}

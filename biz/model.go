@@ -73,6 +73,17 @@ func (t *Transac) ToMsgTxt() string {
 	return fmt.Sprintf("%.2f(Cr) %0.2f(Dr) for account %d", t.Credit, t.Debit, t.TelegID)
 }
 
+// TransacQ : when querying on the transactions collection we often need a time span to query from
+// The summation of credits and debits in separate fields too
+type TransacQ struct {
+	Credits float32 `bson:"credits"`
+	Debits  float32 `bson:"debits"`
+	TelegID int64
+	Desc    string
+	From    time.Time
+	To      time.Time
+}
+
 type Balance struct {
 	TelegID int64     `bson:"tid" json:"tid"`
 	Due     float32   `bson:"due"`

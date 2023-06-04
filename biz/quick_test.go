@@ -25,6 +25,41 @@ func TestErrType(t *testing.T) {
 	assert.True(t, errors.Is(err, ERR_ACC404), "Error comparison")
 }
 
+func TestTotalPlaydayDebits(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("transacs")
+	coll.RemoveAll(bson.M{})
+	data := []*Transac{
+		{TelegID: 5157350442, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 498116745, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 5116645118, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 961044876, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+	}
+	// Before inserting the transactions, we can test for when no play debits
+	t.Log("No testing when no play debits")
+	from, to := TodayAsBoundary()
+	trq := TransacQ{TelegID: 5157350442, From: from, To: to}
+	err := TotalPlaydayDebits(&trq, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"))
+	assert.Nil(t, err, "Unexpected error when getting the total play day debits for today")
+	assert.Equal(t, float32(0.0), trq.Debits, "Unexpected debits value when getting TotalPlaydayDebits")
+
+	for _, d := range data {
+		coll.Insert(d)
+	}
+	t.Log("Inserting test playday debit transactions")
+
+	trq = TransacQ{TelegID: 5157350442, From: from, To: to}
+	err = TotalPlaydayDebits(&trq, dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs"))
+	assert.Nil(t, err, "Unexpected error when getting the total play day debits for today")
+	t.Logf("Total debits for today %.2f", trq.Debits)
+	// TEST: TODO: more tests for negation as well .. once this is tested it will relieve us of most of the function calls
+
+}
+
 func TestPlayerEstimates(t *testing.T) {
 	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
 		Addrs:    []string{TEST_MONGO_HOST},
