@@ -28,23 +28,15 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	recovery, err := func() (float32, error) {
 		adp := ctx.DBAdp.Switch("expenses")
 		mq := &biz.MnthlyExpnsQry{TelegID: abc.SenderId, Dttm: time.Now()} // sender ID has no relevance
-		if err := biz.TeamMonthlyExpense(mq, adp); err != nil {
+		err := biz.TeamMonthlyExpense(mq, adp)
+		if err != nil || mq.Total == 0.0 {
 			return 0.0, err
-		}
-		if mq.Total == 0.0 {
-			return 0.0, nil
 		}
 		days := biz.DaysBeforeMonthEnd()
 		dayRecovery := float64(mq.Total / float32(days))
 		dayRecovery = math.Round(float64(dayRecovery)) // this is what the recovery  should have been
 		return float32(dayRecovery), nil
 	}()
-	if recovery == 0.0 {
-		if err != nil {
-			return upon_err(err)
-		}
-		return settledUp
-	}
 	log.WithFields(log.Fields{
 		"recovery": recovery,
 	}).Debug("Day recovery")
@@ -62,7 +54,7 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 		log.WithFields(log.Fields{
 			"count": c,
 		}).Debug("transacs")
-		if err != nil || c <= 0 {
+		if err != nil || c == 0 {
 			return upon_err(err)
 		}
 		from, to := biz.TodayAsBoundary()

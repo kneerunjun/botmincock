@@ -266,7 +266,7 @@ func AdjustDayDebit(trq *TransacQ, iadp dbadp.DbAdaptor) error {
 	}
 	return func() error {
 		patch := bson.M{
-			"$inc": bson.M{"$debit": trq.Debits},
+			"$inc": bson.M{"debit": trq.Debits},
 		}
 		if _, err := iadp.UpdateBulk(slctr, patch); err != nil {
 			return NewDomainError(ERR_QRYFAIL, err).SetLoc(errLoc).SetUsrMsg(FAIL_QRY_EXPNS)

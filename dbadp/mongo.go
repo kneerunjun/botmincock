@@ -31,7 +31,7 @@ func (ma *mongoAdaptor) UpdateOne(selectr, patch interface{}) error {
 	return ma.Update(selectr, bson.M{"$set": patch})
 }
 func (ma *mongoAdaptor) UpdateBulk(selectr, patch interface{}) (int, error) {
-	info, err := ma.UpdateAll(selectr, bson.M{"$set": patch})
+	info, err := ma.UpdateAll(selectr, patch)
 	return info.Updated, err
 }
 func (ma *mongoAdaptor) GetOne(m interface{}, t reflect.Type) (interface{}, error) {

@@ -20,6 +20,38 @@ const (
 	TEST_MONGO_COLL = "accounts"
 )
 
+// TestAdjustDayDebit : to check if the debit can be altered
+func TestAdjustDayDebit(t *testing.T) {
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	coll := sess.DB("").C("transacs")
+	coll.RemoveAll(bson.M{})
+	data := []*Transac{
+		{TelegID: 5157350442, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 498116745, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 5116645118, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+		{TelegID: 961044876, Debit: 150.00, Desc: PLAYDAY_DESC, Credit: 0.0, DtTm: time.Now()},
+	}
+	// Before inserting the transactions, we can test for when no play debits
+	for _, d := range data {
+		coll.Insert(d)
+	}
+	c, _ := coll.Count()
+	t.Logf("There are about %d test transactions in the database", c)
+	from, to := TodayAsBoundary()
+	trq := &TransacQ{Desc: PLAYDAY_DESC, From: from, To: to, Debits: 100.00}
+	adp := dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs")
+	err := AdjustDayDebit(trq, adp)
+	assert.Nil(t, err, "Unexpected error when AdjustDayDebit")
+	if err != nil {
+		t.Error(err)
+		return
+	}
+}
+
 func TestErrType(t *testing.T) {
 	err := ERR_ACC404
 	assert.True(t, errors.Is(err, ERR_ACC404), "Error comparison")

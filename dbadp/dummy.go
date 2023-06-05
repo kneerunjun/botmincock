@@ -20,6 +20,10 @@ type DummyAdaptor struct {
 	GetOneError error
 }
 
+func (da *DummyAdaptor) UpdateBulk(selectr, patch interface{}) (int, error) {
+	return 0.0, nil
+}
+
 func (da *DummyAdaptor) AddOne(interface{}) error {
 	return nil
 }
