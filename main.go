@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/kneerunjun/botmincock/bot/cmd"
 	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
@@ -334,6 +336,73 @@ func main() {
 			}
 		}
 	}()
+	// Starting a small http server so that we can callup from cron jobs
+	// Daily cronjobs can call this server to get chores done
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		r := gin.Default()
+		r.GET("debits/adjust", HandlrDebitAdjustments)
+		srvr := &http.Server{
+			Addr:    ":3333",
+			Handler: r,
+		}
+		ctx, cncl := context.WithTimeout(context.TODO(), 3*time.Second)
+		defer cncl()
+		go func() {
+			<-cancel
+			srvr.Shutdown(ctx)
+		}()
+		srvr.ListenAndServe()
+		log.Warn("Now closing the http server..")
+	}()
 	wg.Wait()
 
+}
+func SendBotHttp(url string) error {
+	cl := http.Client{Timeout: STD_REQ_TIMEOUT}
+	// url := fmt.Sprintf("%s%s", baseUrl, resp.SendMsgUrl())
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		log.WithFields(log.Fields{
+			"err": err,
+		}).Error("send message request could not be created")
+		return err
+	} else {
+		resp, err := cl.Do(req)
+		if err != nil {
+			log.WithFields(log.Fields{
+				"status": resp.StatusCode,
+				"err":    err,
+			}).Error("error sending message over http")
+			return err
+		} else {
+			log.WithFields(log.Fields{
+				"status": resp.StatusCode,
+			}).Info("responded..")
+		}
+		if resp.StatusCode != http.StatusOK {
+			return fmt.Errorf("unfavourable reponse from server when sending message from bot")
+		}
+		return nil
+	}
+}
+func HandlrDebitAdjustments(c *gin.Context) {
+	log.Debug("Received request to adjust daily debits")
+	// We send in a bot text response whenever the debits are adjusted
+	command := cmd.AdjustPlayDebitBotCmd{AnyBotCmd: &cmd.AnyBotCmd{ChatId: -902469479}}
+	ctx := cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "transacs"))
+	resp := command.Execute(ctx)
+	if resp != nil {
+		// TODO: here we need the bot url to send the message
+		// But unless we have the bot instance getting the url isnt really possible
+		// HACK: we are just hardcoding the boturl here for the time being
+		if err := SendBotHttp(fmt.Sprintf("%s%s", "https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk", resp.SendMsgUrl())); err != nil {
+			c.AbortWithStatus(http.StatusBadGateway)
+			return
+		}
+		c.AbortWithStatus(http.StatusOK)
+		return
+	}
+	c.AbortWithStatus(http.StatusNotFound)
 }

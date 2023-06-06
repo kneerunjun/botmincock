@@ -12,5 +12,11 @@ func (anrsp *AnyResponse) UserMessage() string {
 	return anrsp.UsrMessage
 }
 func (anrsp *AnyResponse) SendMsgUrl() string {
-	return fmt.Sprintf("/sendMessage?chat_id=%d&reply_to_message_id=%d&text=%s", anrsp.ChatId, anrsp.ReplyToMsg, anrsp.UsrMessage)
+	if anrsp.ReplyToMsg > 0 {
+		// when the bot would want to reply to a paritcular message
+		return fmt.Sprintf("/sendMessage?chat_id=%d&reply_to_message_id=%d&text=%s", anrsp.ChatId, anrsp.ReplyToMsg, anrsp.UsrMessage)
+	} else {
+		// When the bot would like to send a free text message
+		return fmt.Sprintf("/sendMessage?chat_id=%d&text=%s", anrsp.ChatId, anrsp.UsrMessage)
+	}
 }
