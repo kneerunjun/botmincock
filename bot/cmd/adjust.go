@@ -69,6 +69,7 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 			}
 			return settledUp
 		}
+		trq.Debits = recovery/float32(c) - trq.Debits
 		err = biz.AdjustDayDebit(trq, adp)
 		if err != nil {
 			return upon_err(err)
