@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/resp"
 	"github.com/kneerunjun/botmincock/dbadp"
 	"github.com/stretchr/testify/assert"
 	"gopkg.in/mgo.v2"
@@ -17,6 +18,71 @@ const (
 	TEST_MONGO_DB   = "botmincock_test"
 	TEST_MONGO_COLL = "accounts"
 )
+
+// TestDebitAdjustment: A cron jb can adjust the daily debits to set recoveries for the day
+// but this needs to be tested for all the border cases
+func TestDebitAdjustment(t *testing.T) {
+	// Setting up the connection and the database
+	sess, _ := mgo.DialWithInfo(&mgo.DialInfo{
+		Addrs:    []string{TEST_MONGO_HOST},
+		Timeout:  4 * time.Second,
+		Database: TEST_MONGO_DB,
+	})
+	accounts := sess.DB("").C("accounts")
+	accounts.RemoveAll(bson.M{})
+
+	transacs := sess.DB("").C("transacs")
+	transacs.RemoveAll(bson.M{})
+
+	estimates := sess.DB("").C("estimates")
+	estimates.RemoveAll(bson.M{})
+
+	expenses := sess.DB("").C("expenses")
+	expenses.RemoveAll(bson.M{})
+	t.Log("Resetting the database. .")
+
+	// TEST: when the total monthly expense is < 5  - we are all settled up
+	anyCmd := &AnyBotCmd{MsgId: 454839589, ChatId: 5435435875, SenderId: 5157350442} // message id and charid dont have a relevance here
+	cmd := &AdjustPlayDebitBotCmd{AnyBotCmd: anyCmd}
+	adp := dbadp.NewMongoAdpator(TEST_MONGO_HOST, TEST_MONGO_DB, "transacs")
+	r := cmd.Execute(NewExecCtx().SetDB(adp))
+	_, ok := r.(*resp.TxtBotResp)
+	assert.True(t, ok, "Unexpected type of bot response %s", reflect.TypeOf(r).String())
+
+	// TEST: expenses !=0 but no one played today
+	expData := []*biz.Expense{
+		{TelegID: 5157350442, DtTm: time.Now(), Desc: "Court bookings", INR: 10000},
+		{TelegID: 5157350442, DtTm: time.Now(), Desc: "Purchase of MAVIS 350", INR: 3850},
+	}
+	for _, d := range expData {
+		expenses.Insert(d)
+	}
+	// Correspoding transactions for the expenses
+	transacData := []*biz.Transac{
+		{TelegID: 5157350442, Credit: 10000, Debit: 0.0, Desc: "Court bookings", DtTm: time.Now()},
+		{TelegID: 5157350442, Credit: 3850, Debit: 0.0, Desc: "Purchase of MAVIS 350", DtTm: time.Now()},
+	}
+	for _, d := range transacData {
+		transacs.Insert(d)
+	}
+	t.Log("Added test data for expenses &trasactions")
+	r = cmd.Execute(NewExecCtx().SetDB(adp))
+	_, ok = r.(*resp.TxtBotResp)
+	assert.True(t, ok, "Unexpected type of bot response %s", reflect.TypeOf(r).String())
+	t.Log("Tested for the case when nobody played on the day")
+
+	plydyTrnsc := []*biz.Transac{
+		{TelegID: 5157350442, Credit: 0.0, Debit: 150.0, Desc: biz.PLAYDAY_DESC, DtTm: time.Now()},
+		{TelegID: 498116745, Credit: 0.0, Debit: 150.0, Desc: biz.PLAYDAY_DESC, DtTm: time.Now()},
+	}
+	for _, d := range plydyTrnsc {
+		transacs.Insert(d)
+	}
+	r = cmd.Execute(NewExecCtx().SetDB(adp))
+	_, ok = r.(*resp.TxtBotResp)
+	assert.True(t, ok, "Unexpected type of bot response %s", reflect.TypeOf(r).String())
+	t.Log("Tested for the case when nobody played on the day")
+}
 
 // TestAttendCmd : since this command involves calling multiple business layer functions, it needs a thorough test
 func TestAttendCmd(t *testing.T) {

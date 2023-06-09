@@ -40,10 +40,9 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 	log.WithFields(log.Fields{
 		"recovery": recovery,
 	}).Debug("Day recovery")
-	if recovery <= 5.00 { // for any recovery deficit thats small can be waived off
-		if err != nil {
-			return upon_err(err)
-		}
+	if err != nil {
+		return upon_err(err)
+	} else if recovery <= 5.00 {
 		return settledUp
 	}
 	// then we go ahead to settle the amounts
@@ -54,8 +53,10 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 		log.WithFields(log.Fields{
 			"count": c,
 		}).Debug("transacs")
-		if err != nil || c == 0 {
+		if err != nil {
 			return upon_err(err)
+		} else if c == 0 {
+			return settledUp
 		}
 		from, to := biz.TodayAsBoundary()
 		trq := &biz.TransacQ{Desc: biz.PLAYDAY_DESC, From: from, To: to}
@@ -63,13 +64,12 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 		log.WithFields(log.Fields{
 			"debits": trq.Debits,
 		}).Debug("transacs")
-		if trq.Debits == 0.0 {
-			if err != nil {
-				return upon_err(err)
-			}
+		if err != nil {
+			return upon_err(err)
+		} else if trq.Debits == 0.0 {
 			return settledUp
 		}
-		trq.Debits = recovery/float32(c) - trq.Debits
+		trq.Debits = (recovery - trq.Debits) / float32(c)
 		err = biz.AdjustDayDebit(trq, adp)
 		if err != nil {
 			return upon_err(err)
