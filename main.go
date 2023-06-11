@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -343,6 +344,7 @@ func main() {
 		defer wg.Done()
 		r := gin.Default()
 		r.GET("debits/adjust", HandlrDebitAdjustments)
+		r.GET("playdays/estimate", HndlrPlaydayEstimates)
 		srvr := &http.Server{
 			Addr:    ":3333",
 			Handler: r,
@@ -387,6 +389,31 @@ func SendBotHttp(url string) error {
 		return nil
 	}
 }
+
+// HndlrPlaydayEstimates : this handles getting http command to send the poll for getting the estimates
+// This will trigger sending the poll to the group once every month as per scheduled cron job
+// Does not require the command infra  .. can send
+func HndlrPlaydayEstimates(c *gin.Context) {
+	log.Debug("Received request to send poll for estimates")
+
+	qs := fmt.Sprintf("Availability for %s %%3F", time.Now().AddDate(0, 1, 0).Month().String()) // the question of the poll
+	anon := "False"
+	chatID := -902469479
+	// expiry := time.Now().Add(24 * time.Hour).UnixMilli()
+	options := []string{
+		"All days",
+		"15 days",
+		"Only on weekends",
+		"Out for the month",
+	}
+	jOptions, _ := json.Marshal(options)
+	url := fmt.Sprintf("https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk/sendPoll?chat_id=%d&is_anonymous=%s&question=%s&options=%s", chatID, anon, qs, jOptions)
+	if err := SendBotHttp(url); err != nil {
+		c.AbortWithStatus(http.StatusBadGateway)
+		return
+	}
+}
+
 func HandlrDebitAdjustments(c *gin.Context) {
 	log.Debug("Received request to adjust daily debits")
 	// We send in a bot text response whenever the debits are adjusted

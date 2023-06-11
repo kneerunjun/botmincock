@@ -44,7 +44,7 @@ services:
     stdin_open: true 
     tty: true
     container_name: ctn_botminc
-    entrypoint: ["${BINDIR}/botmincock", "-verbose=${VERBOSE}", "-flog=${FLOG}", "-seed=${SEED}"]
+    entrypoint: ["${BINDIR}/entry.sh", "-v=${VERBOSE}", "-f=${FLOG}", "-s=${SEED}"]
     secrets:
       - token_secret
 secrets:

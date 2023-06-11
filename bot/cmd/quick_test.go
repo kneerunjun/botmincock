@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
+	"net/http"
 	"reflect"
 	"testing"
 	"time"
@@ -18,6 +21,23 @@ const (
 	TEST_MONGO_DB   = "botmincock_test"
 	TEST_MONGO_COLL = "accounts"
 )
+
+func TestSendPoll(t *testing.T) {
+	options := []string{
+		"Avva Adams",
+		"Alison Tyler",
+		"August Ames",
+		"Lisa Ann",
+		"Little Caprice",
+	}
+	jOptions, _ := json.Marshal(options)
+	url := fmt.Sprintf("https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk/sendPoll?chat_id=-902469479&is_anonymous=False&open_period=20&question=Favorite pornstar&options=%s", jOptions)
+	cl := &http.Client{Timeout: 3 * time.Second}
+	req, _ := http.NewRequest("POST", url, nil)
+	resp, err := cl.Do(req)
+	assert.Nil(t, err, "Error when sending poll via http")
+	assert.Equal(t, http.StatusOK, resp.StatusCode, "Unexpected response status code when sending poll")
+}
 
 // TestDebitAdjustment: A cron jb can adjust the daily debits to set recoveries for the day
 // but this needs to be tested for all the border cases
