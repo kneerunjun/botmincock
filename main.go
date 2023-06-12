@@ -218,13 +218,13 @@ func main() {
 	defer close(cancel)
 	// TODO: private keys cannot be exposed here
 	// this has to come from secret files
-	botmincock := core.NewTeleGBot(&core.BotConfig{Token: tok, MaxCoincUpdates: MAX_COINC_UPDATES}, reflect.TypeOf(&core.SharedExpensesBot{}))
-	log.WithFields(log.Fields{
-		"bot token": botmincock.Token(),
-	}).Debug("just checking in on the bot token configuration")
+	botmincock := core.NewTeleGBot(&core.SharedExpensesBotEnv{BotEnv: core.EnvOrDefaults(), GuestCharges: 150.00}, reflect.TypeOf(&core.SharedExpensesBot{}))
 	if botmincock == nil {
 		log.Fatal("failed to instantiate bot..")
 	}
+	log.WithFields(log.Fields{
+		"bot token": botmincock.Token(),
+	}).Debug("just checking in on the bot token configuration")
 	wg.Add(1)
 	go func() {
 		defer wg.Done()

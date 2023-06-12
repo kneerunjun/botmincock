@@ -13,27 +13,30 @@ echo "starting cron deamon..."
 
 
 # getting all the command line arguments 
-verbose=false
-filelog=false
-seed=false
+verbose="false"
+filelog="false"
+seed="false"
 while getopts ":v:f:s:" o; do
     case "${o}" in
         v)
-            verbose=true
+            verbose=${OPTARG}
             ;;
         f)
-            filelog=true
+            filelog=${OPTARG}
             ;;
         s) 
-            seed=true
+            seed=${OPTARG}
             ;;
         *)
             usage
             ;;
     esac
 done
+echo $verbose
+echo $filelog
+echo $seed
 echo "now booting the botmincock application.."
-/usr/bin/botmincock -verbose=$verbose -flog=$filelog -seed=$seed&
+/usr/bin/botmincock -verbose $verbose -flog $filelog -seed $seed&
 
 # waiting for seller pro application 
 child=$!

@@ -9,7 +9,7 @@ _interrupt(){
 
 
 trap _interrupt SIGTERM
-docker-compose --env-file dev.env build && docker-compose --env-file dev.env up
+docker-compose --env-file dev.env build && docker-compose --env-file dev.env up 
 child=$!
 wait $child
 echo "closing down botmincock"
