@@ -12,6 +12,8 @@ func TestNewTelegBot(t *testing.T) {
 	t.Setenv("BOT_NAME", "fsdfdsf")
 	t.Setenv("PSABADMIN_GRP", "fsfsdfs")
 	t.Setenv("MYID", "456546")
+	t.Setenv("PSABADMIN_GRP", "4566878")
+
 	botmincock := NewTeleGBot(&SharedExpensesBotEnv{BotEnv: EnvOrDefaults(), GuestCharges: 150.00}, reflect.TypeOf(&SharedExpensesBot{}))
 	assert.NotNil(t, botmincock, "Uexpected nil when creating new bot")
 }

@@ -3,6 +3,8 @@ package core
 import (
 	"fmt"
 	"reflect"
+
+	"github.com/sirupsen/logrus"
 )
 
 type Bot interface {
@@ -13,6 +15,9 @@ type Bot interface {
 
 func NewTeleGBot(env ConfigEnv, ty reflect.Type) Bot {
 	itf := reflect.New(ty.Elem()).Interface()
+	logrus.WithFields(logrus.Fields{
+		"type": reflect.TypeOf(itf).String(),
+	}).Debug("checking for the bots type")
 	val, ok := itf.(Bot)
 	if !ok {
 		return nil
@@ -25,8 +30,8 @@ type SharedExpensesBot struct {
 	Env *SharedExpensesBotEnv
 }
 
-func (seb *SharedExpensesBot) SetEnviron(e *SharedExpensesBotEnv) {
-	seb.Env = e
+func (seb *SharedExpensesBot) SetEnviron(e ConfigEnv) {
+	seb.Env = e.(*SharedExpensesBotEnv)
 }
 
 func (seb *SharedExpensesBot) Token() string {

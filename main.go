@@ -216,15 +216,21 @@ func main() {
 	var wg sync.WaitGroup
 	cancel := make(chan bool)
 	defer close(cancel)
-	// TODO: private keys cannot be exposed here
-	// this has to come from secret files
-	botmincock := core.NewTeleGBot(&core.SharedExpensesBotEnv{BotEnv: core.EnvOrDefaults(), GuestCharges: 150.00}, reflect.TypeOf(&core.SharedExpensesBot{}))
+
+	benv := core.EnvOrDefaults()
+	log.WithFields(log.Fields{
+		"handle":  benv.Handle,
+		"name":    benv.Name,
+		"grpid":   benv.GrpID,
+		"oid":     benv.OwnerID,
+		"baseurl": benv.BaseURL,
+		"token":   benv.Token,
+	}).Debug("bot environment=")
+	botmincock := core.NewTeleGBot(&core.SharedExpensesBotEnv{BotEnv: benv, GuestCharges: 150.00}, reflect.TypeOf(&core.SharedExpensesBot{}))
 	if botmincock == nil {
 		log.Fatal("failed to instantiate bot..")
 	}
-	log.WithFields(log.Fields{
-		"bot token": botmincock.Token(),
-	}).Debug("just checking in on the bot token configuration")
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
