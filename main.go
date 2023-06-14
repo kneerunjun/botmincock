@@ -2,11 +2,8 @@ package main
 
 import (
 	"bufio"
-	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"os/signal"
 	"reflect"
@@ -15,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/kneerunjun/botmincock/bot/cmd"
 	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
@@ -291,12 +287,7 @@ func main() {
 					if err != nil {
 						respChn <- resp.NewErrResponse(err, "ParseBotCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						cmdcoll, ok := commnd.(cmd.CmdForColl)
-						if !ok {
-							respChn <- resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ParseBotCmd", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
-						} else {
-							respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
-						}
+						respChn <- ResponseFromCommand(commnd, updt)
 					}
 				}()
 			case updt := <-txtMsgs:
@@ -305,39 +296,11 @@ func main() {
 					if err != nil {
 						respChn <- resp.NewErrResponse(err, "ParseTextCmd", "Did not quite understand the command, can you try again?", updt.Message.Chat.Id, updt.Message.Id)
 					} else {
-						cmdcoll, ok := commnd.(cmd.CmdForColl)
-						if !ok {
-							respChn <- resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ParseTextCmd", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
-						} else {
-							respChn <- commnd.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
-						}
+						respChn <- ResponseFromCommand(commnd, updt)
 					}
 				}()
 			case resp := <-respChn:
-				go func() {
-					// resp.Log()
-					cl := http.Client{Timeout: STD_REQ_TIMEOUT}
-					url := fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl())
-					req, err := http.NewRequest("POST", url, nil)
-					if err != nil {
-						log.WithFields(log.Fields{
-							"err": err,
-						}).Error("send message request could not be created")
-					} else {
-						resp, err := cl.Do(req)
-						if err != nil {
-							log.WithFields(log.Fields{
-								"status": resp.StatusCode,
-								"err":    err,
-							}).Error("error sending message over http")
-						} else {
-							log.WithFields(log.Fields{
-								"status": resp.StatusCode,
-							}).Info("responded..")
-						}
-					}
-
-				}()
+				go SendBotHttp(fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl()))
 			case <-cancel:
 				return
 			}
@@ -346,96 +309,15 @@ func main() {
 	// Starting a small http server so that we can callup from cron jobs
 	// Daily cronjobs can call this server to get chores done
 	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		r := gin.Default()
-		r.GET("debits/adjust", HandlrDebitAdjustments)
-		r.GET("playdays/estimate", HndlrPlaydayEstimates)
-		srvr := &http.Server{
-			Addr:    ":3333",
-			Handler: r,
-		}
-		ctx, cncl := context.WithTimeout(context.TODO(), 3*time.Second)
-		defer cncl()
-		go func() {
-			<-cancel
-			srvr.Shutdown(ctx)
-		}()
-		srvr.ListenAndServe()
-		log.Warn("Now closing the http server..")
-	}()
+	go RunServlet(&HttpListenServlet{}, &RunConfig{WtGrp: &wg, Cancel: cancel})
 	wg.Wait()
-
 }
-func SendBotHttp(url string) error {
-	cl := http.Client{Timeout: STD_REQ_TIMEOUT}
-	// url := fmt.Sprintf("%s%s", baseUrl, resp.SendMsgUrl())
-	req, err := http.NewRequest("POST", url, nil)
-	if err != nil {
-		log.WithFields(log.Fields{
-			"err": err,
-		}).Error("send message request could not be created")
-		return err
+
+func ResponseFromCommand(c cmd.BotCommand, updt updt.BotUpdate) resp.BotResponse {
+	cmdcoll, ok := c.(cmd.CmdForColl)
+	if !ok {
+		return resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ResponseFromCommand", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
 	} else {
-		resp, err := cl.Do(req)
-		if err != nil {
-			log.WithFields(log.Fields{
-				"status": resp.StatusCode,
-				"err":    err,
-			}).Error("error sending message over http")
-			return err
-		} else {
-			log.WithFields(log.Fields{
-				"status": resp.StatusCode,
-			}).Info("responded..")
-		}
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("unfavourable reponse from server when sending message from bot")
-		}
-		return nil
+		return c.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
 	}
-}
-
-// HndlrPlaydayEstimates : this handles getting http command to send the poll for getting the estimates
-// This will trigger sending the poll to the group once every month as per scheduled cron job
-// Does not require the command infra  .. can send
-func HndlrPlaydayEstimates(c *gin.Context) {
-	log.Debug("Received request to send poll for estimates")
-
-	qs := fmt.Sprintf("Availability for %s %%3F", time.Now().AddDate(0, 1, 0).Month().String()) // the question of the poll
-	anon := "False"
-	chatID := -902469479
-	// expiry := time.Now().Add(24 * time.Hour).UnixMilli()
-	options := []string{
-		"All days",
-		"15 days",
-		"Only on weekends",
-		"Out for the month",
-	}
-	jOptions, _ := json.Marshal(options)
-	url := fmt.Sprintf("https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk/sendPoll?chat_id=%d&is_anonymous=%s&question=%s&options=%s", chatID, anon, qs, jOptions)
-	if err := SendBotHttp(url); err != nil {
-		c.AbortWithStatus(http.StatusBadGateway)
-		return
-	}
-}
-
-func HandlrDebitAdjustments(c *gin.Context) {
-	log.Debug("Received request to adjust daily debits")
-	// We send in a bot text response whenever the debits are adjusted
-	command := cmd.AdjustPlayDebitBotCmd{AnyBotCmd: &cmd.AnyBotCmd{ChatId: -902469479}}
-	ctx := cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "transacs"))
-	resp := command.Execute(ctx)
-	if resp != nil {
-		// TODO: here we need the bot url to send the message
-		// But unless we have the bot instance getting the url isnt really possible
-		// HACK: we are just hardcoding the boturl here for the time being
-		if err := SendBotHttp(fmt.Sprintf("%s%s", "https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk", resp.SendMsgUrl())); err != nil {
-			c.AbortWithStatus(http.StatusBadGateway)
-			return
-		}
-		c.AbortWithStatus(http.StatusOK)
-		return
-	}
-	c.AbortWithStatus(http.StatusNotFound)
 }

@@ -15,6 +15,8 @@ const (
 type ConfigEnv interface {
 }
 
+// BotEnv : Basic telegram bot environment fields
+// This can be extended depending on the implementation sought
 type BotEnv struct {
 	Handle         string // this is the chat handle for the bot
 	Name           string // reference name of the bot

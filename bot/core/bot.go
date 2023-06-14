@@ -15,11 +15,11 @@ type Bot interface {
 
 func NewTeleGBot(env ConfigEnv, ty reflect.Type) Bot {
 	itf := reflect.New(ty.Elem()).Interface()
-	logrus.WithFields(logrus.Fields{
-		"type": reflect.TypeOf(itf).String(),
-	}).Debug("checking for the bots type")
 	val, ok := itf.(Bot)
 	if !ok {
+		logrus.WithFields(logrus.Fields{
+			"type": reflect.TypeOf(itf).String(),
+		}).Warn("Failed to cast into Bot interface")
 		return nil
 	}
 	val.SetEnviron(env)
