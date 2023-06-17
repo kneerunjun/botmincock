@@ -4,6 +4,7 @@ package updt
 Filters are sequential blocks for visitor pattern chain where an update passed thru and can be parsed to a command
 Filters help to sort the messages and send then commands, to appropriate channels
 filters can indicate if the next filter needs to execute or the visitor object has to breakaway
+Filters
 ====================*/
 
 import (
@@ -127,4 +128,28 @@ func (txtcmd *TextMsgCmdFilter) Apply(updt *BotUpdate) (bool, bool) {
 		}
 	}
 	return yes, (yes && txtcmd.PassChn != nil)
+}
+
+// =======================
+
+// This is when you have update on the poll being sent
+type PollAnsCmdFilter struct {
+	PassChn chan BotUpdate // pass thru channel
+}
+
+func (pacf *PollAnsCmdFilter) PassThruChn() chan BotUpdate {
+	return pacf.PassChn
+}
+func (pacf *PollAnsCmdFilter) Apply(updt *BotUpdate) (bool, bool) {
+	yes := false
+	log.WithFields(log.Fields{
+		"id": updt.PollAnswer.Id,
+	}).Debug("inside the PollAnsCmdFilter")
+	if updt.PollAnswer.Id != "" {
+		log.WithFields(log.Fields{
+			"id": updt.PollAnswer.Id,
+		}).Debug("now passing the PollAnsCmdFilter")
+		yes = true
+	}
+	return yes, (yes && pacf.PassChn != nil)
 }

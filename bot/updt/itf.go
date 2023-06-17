@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/kneerunjun/botmincock/bot/core"
@@ -39,6 +40,13 @@ type BotUpdate struct {
 			VoterCount int    `json:"voter_count"`
 		} `json:"options"`
 	} `json:"Poll"`
+	PollAnswer struct {
+		Id   string `json:"poll_id"`
+		User struct {
+			Id int64 `json:"id"`
+		} `json:"user"`
+		Options []int `json:"option_ids"` //answers that the user may have chosen
+	} `json:"poll_answer"`
 }
 
 // FetchBotUpdates : fetch updates for the given bot with the token authentication
@@ -126,9 +134,15 @@ func WatchUpdates(cancel chan bool, bot core.Bot, freq time.Duration, flts ...Bo
 					// NOTE: for each filter if the message passes the filters and aborts its considered matching the filter
 					// very rarely will a filter pass an update and yet not abort filters ahead. - this is the case of message being relevant to more than one filter
 					pass, abort := f.Apply(&updt)
+					log.WithFields(log.Fields{
+						"pass":       pass,
+						"abort":      abort,
+						"filter_typ": reflect.TypeOf(f).String(),
+					}).Debug("verifying the pass/abort")
 					if pass && f.PassThruChn() != nil {
 						// IMP: checking to see if the channel is not nil is also important
 						// filter may pass thru but if the channel is nil it would mean the program will hang writing to nil channel
+						// This may seem redundant but is necessary
 						log.WithFields(log.Fields{
 							"text": updt.Message.Text,
 						}).Debug("passed filter")

@@ -9,19 +9,27 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/kneerunjun/botmincock/bot/cmd"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/dbadp"
 	log "github.com/sirupsen/logrus"
 )
+
+// HandlrBotInContext : will inject the bot as an object in the context
+func HandlrBotInContext(b core.Bot) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("bot", b)
+	}
+}
 
 // HndlrPlaydayEstimates : this handles getting http command to send the poll for getting the estimates
 // This will trigger sending the poll to the group once every month as per scheduled cron job
 // Does not require the command infra  .. can send
 func HndlrPlaydayEstimates(c *gin.Context) {
-	log.Debug("Received request to send poll for estimates")
+	val, _ := c.Get("bot")
+	bot := val.(core.Bot)
+
 	qs := fmt.Sprintf("Availability for %s %%3F", time.Now().AddDate(0, 1, 0).Month().String()) // the question of the poll
 	anon := "False"
-	chatID := -902469479
-	// expiry := time.Now().Add(24 * time.Hour).UnixMilli()
 	options := []string{
 		"All days",
 		"15 days",
@@ -29,7 +37,7 @@ func HndlrPlaydayEstimates(c *gin.Context) {
 		"Out for the month",
 	}
 	jOptions, _ := json.Marshal(options)
-	url := fmt.Sprintf("https://api.telegram.org/bot6133190482:AAFdMU-49W7t9zDoD5BIkOFmtc-PR7-nBLk/sendPoll?chat_id=%d&is_anonymous=%s&question=%s&options=%s", chatID, anon, qs, jOptions)
+	url := bot.(core.BotUrl).SendPollUrl(anon, qs, string(jOptions))
 	if err := SendBotHttp(url); err != nil {
 		c.AbortWithStatus(http.StatusBadGateway)
 		return
@@ -58,12 +66,13 @@ func HandlrDebitAdjustments(c *gin.Context) {
 
 type HttpListenServlet struct {
 	Srvr *http.Server
+	Bot  core.Bot
 }
 
 func (hls *HttpListenServlet) Run(*RunConfig) error {
 	r := gin.Default()
-	r.GET("debits/adjust", HandlrDebitAdjustments)
-	r.GET("playdays/estimate", HndlrPlaydayEstimates)
+	r.GET("debits/adjust", HandlrBotInContext(hls.Bot), HandlrDebitAdjustments)
+	r.GET("playdays/estimate", HandlrBotInContext(hls.Bot), HndlrPlaydayEstimates)
 	hls.Srvr = &http.Server{
 		Addr:    ":3333",
 		Handler: r,
@@ -74,6 +83,8 @@ func (hls *HttpListenServlet) Halt(ctx context.Context) {
 	hls.Srvr.Shutdown(ctx)
 }
 
+// SendBotHttp: Common service method that can , when given the url POST it to the telegram api server
+// Can log errors and returns nil when success
 func SendBotHttp(url string) error {
 	cl := http.Client{Timeout: STD_REQ_TIMEOUT}
 	// url := fmt.Sprintf("%s%s", baseUrl, resp.SendMsgUrl())
@@ -89,15 +100,17 @@ func SendBotHttp(url string) error {
 			log.WithFields(log.Fields{
 				"status": resp.StatusCode,
 				"err":    err,
+				"url":    url,
 			}).Error("error sending message over http")
 			return err
 		} else {
-			log.WithFields(log.Fields{
-				"status": resp.StatusCode,
-			}).Info("responded..")
-		}
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("unfavourable reponse from server when sending message from bot")
+			if resp.StatusCode != http.StatusOK {
+				log.WithFields(log.Fields{
+					"status": resp.StatusCode,
+					"url":    url,
+				}).Error("unfavourable reponse from server")
+				return fmt.Errorf("unfavourable reponse from server")
+			}
 		}
 		return nil
 	}

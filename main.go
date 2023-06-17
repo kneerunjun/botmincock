@@ -251,10 +251,15 @@ func main() {
 	defer close(botCommands)
 	txtMsgs := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
 	defer close(txtMsgs)
+
+	pollAns := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
+	defer close(pollAns) // a channel for all poll answer updates
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		filters := []updt.BotUpdtFilter{
+			&updt.PollAnsCmdFilter{PassChn: pollAns}, // since the poll update isnt attached to any conversation
 			&updt.GrpConvFilter{PassChn: nil},
 			&updt.NonZeroIDFilter{PassChn: nil},
 			&updt.BotCommandFilter{PassChn: botCommands, CommandExprs: allCommands},
@@ -299,6 +304,15 @@ func main() {
 						respChn <- ResponseFromCommand(commnd, updt)
 					}
 				}()
+			case updt := <-pollAns:
+				go func() {
+					log.WithFields(log.Fields{
+						"poll_id": updt.PollAnswer.Id,
+						"user":    updt.PollAnswer.User.Id,
+						"answer":  updt.PollAnswer.Options,
+					}).Debug("someone just answered the poll")
+
+				}()
 			case resp := <-respChn:
 				go SendBotHttp(fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl()))
 			case <-cancel:
@@ -309,7 +323,7 @@ func main() {
 	// Starting a small http server so that we can callup from cron jobs
 	// Daily cronjobs can call this server to get chores done
 	wg.Add(1)
-	go RunServlet(&HttpListenServlet{}, &RunConfig{WtGrp: &wg, Cancel: cancel})
+	go RunServlet(&HttpListenServlet{Bot: botmincock}, &RunConfig{WtGrp: &wg, Cancel: cancel})
 	wg.Wait()
 }
 
