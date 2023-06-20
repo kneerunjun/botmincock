@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 	log "github.com/sirupsen/logrus"
 )
@@ -21,7 +22,7 @@ type AdjustPlayDebitBotCmd struct {
 // This is a better way to calculate the debits for day
 // In reality though not all players play daily, and hence the deficit of the recovery per day has to be distributed amongst players daily after the play is over
 // A simple cron job can do this
-func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	upon_err := uponErr(abc.ChatId, abc.MsgId) // closure to fill in the error details
 	settledUp := resp.NewTextResponse("We are all settled up for the day", abc.ChatId, abc.MsgId)
 	// Getting the recovery for the day
@@ -46,7 +47,7 @@ func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
 		return settledUp
 	}
 	// then we go ahead to settle the amounts
-	return func() resp.BotResponse {
+	return func() core.BotResponse {
 		// In the context of transac collection
 		adp := ctx.DBAdp.Switch("transacs")
 		c, err := biz.AttendedToday(adp)

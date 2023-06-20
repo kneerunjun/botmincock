@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -12,7 +13,7 @@ type ElevAccBotCmd struct {
 	TargetAcc int64 // id of the account that would be elevated
 }
 
-func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	/*====================
 	- verify if the commanding account is of admin level
 	- Elevate account

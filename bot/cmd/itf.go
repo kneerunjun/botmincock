@@ -3,7 +3,7 @@ package cmd
 import (
 	"encoding/json"
 
-	"github.com/kneerunjun/botmincock/bot/resp"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/dbadp"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,7 +31,7 @@ Bot command interfaces
 
 // BotCommand : Any command that can execute and send back a BotResponse
 type BotCommand interface {
-	Execute(ctx *CmdExecCtx) resp.BotResponse
+	Execute(ctx *CmdExecCtx) core.BotResponse
 }
 
 type Loggable interface {

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -17,7 +18,7 @@ type PayDuesBotCmd struct {
 // timestamp for the expense is the time when this command is executed
 // since expenses are collated monthly - it makes little difference if the time stamp is local or the actual time of expenditure
 // Sends a error response when error in recording expense
-func (pdc *PayDuesBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (pdc *PayDuesBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	trnsc := &biz.Transac{TelegID: pdc.SenderId, Credit: pdc.Val, DtTm: time.Now(), Desc: "Clearing dues.."}
 	err := biz.ClearDues(trnsc, ctx.DBAdp)
 	if err != nil {
@@ -36,7 +37,7 @@ type MyDuesBotCmd struct {
 	*AnyBotCmd
 }
 
-func (mdbc *MyDuesBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (mdbc *MyDuesBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	bal := &biz.Balance{TelegID: mdbc.SenderId, DtTm: time.Now()}
 	err := biz.MyDues(bal, ctx.DBAdp)
 	if err != nil {

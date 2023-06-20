@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/kneerunjun/botmincock/bot/updt"
+	"github.com/kneerunjun/botmincock/bot/core"
 )
 
 // text_to_cmdargs : for a given pattern this will match the text and then for every subexpnames will form a key value pair
@@ -29,7 +29,7 @@ func text_to_cmdargs(pattrn *regexp.Regexp, text string, result *map[string]inte
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
 // a command object is action, channel over to send response, and reference of the chat
-func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
+func ParseBotCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
 	// from the update message this will parse the bot command to process
 	// bot command will also get references to the messages
 	// textual command needs to be broken down to an action that the bot can execute
@@ -88,7 +88,7 @@ func ParseBotCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
 }
 
-func ParseTextCmd(updt updt.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
+func ParseTextCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
 	// there arent too many components in the message that need to be
 	for _, pattrn := range botCmnds {
 		cmdArgs := map[string]interface{}{} // all that a command ever needs to execute and send a reponse

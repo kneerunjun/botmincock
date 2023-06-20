@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -24,7 +25,7 @@ type AddExpenseBotCmd struct {
 // timestamp for the expense is the time when this command is executed
 // since expenses are collated monthly - it makes little difference if the time stamp is local or the actual time of expenditure
 // Sends a error response when error in recording expense
-func (ebc *AddExpenseBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (ebc *AddExpenseBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	exp := &biz.Expense{TelegID: ebc.SenderId, DtTm: time.Now(), Desc: ebc.Desc, INR: ebc.Val}
 	err := biz.RecordExpense(exp, ctx.DBAdp)
 	if err != nil {
@@ -47,7 +48,7 @@ type ExpenseAggBotCmd struct {
 // timestamp for the expense is the time when this command is executed
 // since expenses are collated monthly - it makes little difference if the time stamp is local or the actual time of expenditure
 // Sends a error response when error in recording expense
-func (eac *ExpenseAggBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (eac *ExpenseAggBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	expns := &biz.MnthlyExpnsQry{TelegID: eac.SenderId, Dttm: time.Now()}
 	err := biz.UserMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {
@@ -74,7 +75,7 @@ type AllExpenseBotCmd struct {
 	*AnyBotCmd
 }
 
-func (aec *AllExpenseBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (aec *AllExpenseBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	expns := &biz.MnthlyExpnsQry{Dttm: time.Now()}
 	err := biz.TeamMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {

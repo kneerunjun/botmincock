@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -13,7 +14,7 @@ type EditMeBotCmd struct {
 	UserEmail string
 }
 
-func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	patchAcc := &biz.UserAccount{TelegID: edit.SenderId, Email: edit.UserEmail}
 	err := biz.UpdateAccountEmail(patchAcc, ctx.DBAdp)
 	if err != nil {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -9,7 +10,7 @@ type MyInfoBotCmd struct {
 	*AnyBotCmd
 }
 
-func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	acc := &biz.UserAccount{TelegID: info.SenderId}
 	err := biz.AccountInfo(acc, ctx.DBAdp)
 	if err != nil {

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -15,7 +16,7 @@ type DeregBotCmd struct {
 }
 
 // Execute : for the account id this will archive the account from the database
-func (debc *DeregBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (debc *DeregBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	if err := biz.DeregisterAccount(&biz.UserAccount{TelegID: debc.SenderId}, ctx.DBAdp); err != nil {
 		de, _ := err.(*biz.DomainError)
 		de.LogE()

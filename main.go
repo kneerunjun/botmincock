@@ -245,20 +245,20 @@ func main() {
 	- once the type of the message is determined also for relevance it can be dispatched to the channel that is relevant
 	- a filter can also abort the testing of subsequent filters, typically when it has found content that is relevant to it
 	=======================*/
-	botCallouts := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
+	botCallouts := make(chan core.BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCallouts)
-	botCommands := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
+	botCommands := make(chan core.BotUpdate, MAX_COINC_UPDATES)
 	defer close(botCommands)
-	txtMsgs := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
+	txtMsgs := make(chan core.BotUpdate, MAX_COINC_UPDATES)
 	defer close(txtMsgs)
 
-	pollAns := make(chan updt.BotUpdate, MAX_COINC_UPDATES)
+	pollAns := make(chan core.BotUpdate, MAX_COINC_UPDATES)
 	defer close(pollAns) // a channel for all poll answer updates
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		filters := []updt.BotUpdtFilter{
+		filters := []core.BotUpdtFilter{
 			&updt.PollAnsCmdFilter{PassChn: pollAns}, // since the poll update isnt attached to any conversation
 			&updt.GrpConvFilter{PassChn: nil},
 			&updt.NonZeroIDFilter{PassChn: nil},
@@ -266,13 +266,13 @@ func main() {
 			&updt.BotCalloutFilter{PassChn: botCallouts},
 			&updt.TextMsgCmdFilter{PassChn: txtMsgs, CommandExprs: textCommands},
 		}
-		updt.WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
+		core.WatchUpdates(cancel, botmincock, BOT_TICK_SECS, filters...)
 	}()
 	// ----------- now setting up the thread to consume updates
 	// ---------------------------------------------------------
 	// whatever the bot action it sends back the response on this channel
 	//
-	respChn := make(chan resp.BotResponse, MAX_COINC_UPDATES)
+	respChn := make(chan core.BotResponse, MAX_COINC_UPDATES)
 	defer close(respChn)
 	wg.Add(1)
 	go func() {
@@ -327,7 +327,7 @@ func main() {
 	wg.Wait()
 }
 
-func ResponseFromCommand(c cmd.BotCommand, updt updt.BotUpdate) resp.BotResponse {
+func ResponseFromCommand(c cmd.BotCommand, updt core.BotUpdate) core.BotResponse {
 	cmdcoll, ok := c.(cmd.CmdForColl)
 	if !ok {
 		return resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ResponseFromCommand", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)

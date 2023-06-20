@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 )
 
@@ -29,7 +30,7 @@ func uponErr(chatid, msgid int64) func(error) *resp.ErrBotResp {
 // gets the total expenses, recovered expenses
 // gets the play days and player estimate for the play days
 // sends exact debit transaction
-func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	// Getting handles to all the datatbase connections
 	accounts := ctx.DBAdp.Switch("accounts")
 	transacs := ctx.DBAdp.Switch("transacs")

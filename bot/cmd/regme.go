@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 
 	"github.com/kneerunjun/botmincock/biz"
+	"github.com/kneerunjun/botmincock/bot/core"
 	"github.com/kneerunjun/botmincock/bot/resp"
 	log "github.com/sirupsen/logrus"
 )
@@ -36,7 +37,7 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 
 // Execute : from the command will pick the params required for registering a new account
 // Upon getting the account registered text response of the newly registered account
-func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) resp.BotResponse {
+func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
 	newAcc := &biz.UserAccount{TelegID: reg.SenderId, Email: reg.UserEmail, Name: reg.FullName}
 	err := biz.RegisterNewAccount(newAcc, ctx.DBAdp)
 	if err != nil {
