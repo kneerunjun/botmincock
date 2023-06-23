@@ -10,11 +10,11 @@ import (
 // email address associated with the account can be changed
 // Command will update the email address of the account and send back the info of the account that has been altered
 type EditMeBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 	UserEmail string
 }
 
-func (edit *EditMeBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (edit *EditMeBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	patchAcc := &biz.UserAccount{TelegID: edit.SenderId, Email: edit.UserEmail}
 	err := biz.UpdateAccountEmail(patchAcc, ctx.DBAdp)
 	if err != nil {

@@ -47,8 +47,8 @@ func HndlrPlaydayEstimates(c *gin.Context) {
 func HandlrDebitAdjustments(c *gin.Context) {
 	log.Debug("Received request to adjust daily debits")
 	// We send in a bot text response whenever the debits are adjusted
-	command := cmd.AdjustPlayDebitBotCmd{AnyBotCmd: &cmd.AnyBotCmd{ChatId: -902469479}}
-	ctx := cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "transacs"))
+	command := cmd.AdjustPlayDebitBotCmd{AnyBotCmd: &core.AnyBotCmd{ChatId: -902469479}}
+	ctx := core.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, "transacs"))
 	resp := command.Execute(ctx)
 	if resp != nil {
 		// TODO: here we need the bot url to send the message

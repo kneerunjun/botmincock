@@ -7,10 +7,10 @@ import (
 )
 
 type MyInfoBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
-func (info *MyInfoBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (info *MyInfoBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	acc := &biz.UserAccount{TelegID: info.SenderId}
 	err := biz.AccountInfo(acc, ctx.DBAdp)
 	if err != nil {

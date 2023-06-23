@@ -16,7 +16,7 @@ import (
 )
 
 type AddExpenseBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 	Val  float32 // total expenditure
 	Desc string  // description of the expenditure
 }
@@ -25,7 +25,7 @@ type AddExpenseBotCmd struct {
 // timestamp for the expense is the time when this command is executed
 // since expenses are collated monthly - it makes little difference if the time stamp is local or the actual time of expenditure
 // Sends a error response when error in recording expense
-func (ebc *AddExpenseBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (ebc *AddExpenseBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	exp := &biz.Expense{TelegID: ebc.SenderId, DtTm: time.Now(), Desc: ebc.Desc, INR: ebc.Val}
 	err := biz.RecordExpense(exp, ctx.DBAdp)
 	if err != nil {
@@ -41,14 +41,14 @@ func (ebc *AddExpenseBotCmd) CollName() string {
 }
 
 type ExpenseAggBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
 // Execute : records a new expense for the sender id
 // timestamp for the expense is the time when this command is executed
 // since expenses are collated monthly - it makes little difference if the time stamp is local or the actual time of expenditure
 // Sends a error response when error in recording expense
-func (eac *ExpenseAggBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (eac *ExpenseAggBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	expns := &biz.MnthlyExpnsQry{TelegID: eac.SenderId, Dttm: time.Now()}
 	err := biz.UserMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {
@@ -72,10 +72,10 @@ similar to ExpenseAggBotCmd but matches no single user
 ====================
 */
 type AllExpenseBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
-func (aec *AllExpenseBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (aec *AllExpenseBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	expns := &biz.MnthlyExpnsQry{Dttm: time.Now()}
 	err := biz.TeamMonthlyExpense(expns, ctx.DBAdp)
 	if err != nil {

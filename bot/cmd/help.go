@@ -9,14 +9,14 @@ import (
 )
 
 type HelpBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
 var (
 	ALL_HELP string = fmt.Sprintf("%c Botmincock v0.0.0 %cPSA Badminton Team %c-%c%%0A%%0ACommands:%%0A@psabadminton_bot /registerme <email>%%0A@psabadminton_bot /editme <new-email>%%0A@psabadminton_bot /myinfo%%0A@psabadminton_bot /deregisterme%%0A@psabadminton_bot /elevateacc <TelegramID>%%0A@psabadminton_bot /addexpense <INR> <remarks>%%0A@psabadminton_bot /myexpense%%0A@psabadminton_bot /allexpenses", biz.EMOJI_robot, biz.EMOJI_copyrt, biz.EMOJI_banana, biz.EMOJI_garlic)
 )
 
-func (info *HelpBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (info *HelpBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	return resp.NewTextResponse(ALL_HELP, info.ChatId, info.MsgId)
 }
 

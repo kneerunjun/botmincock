@@ -14,7 +14,7 @@ import (
 // Players do not turn up daily, but the bot considers them playing daily but contributing only as per estimates
 // example:  if a player has committed for 15 days - the bot considers him playing daily but contributing only 15/total days on each day
 type AdjustPlayDebitBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
 // Execute : For any given attendance day, this will get the recovery deficit , distribute that equally to all players who attended
@@ -22,7 +22,7 @@ type AdjustPlayDebitBotCmd struct {
 // This is a better way to calculate the debits for day
 // In reality though not all players play daily, and hence the deficit of the recovery per day has to be distributed amongst players daily after the play is over
 // A simple cron job can do this
-func (abc *AdjustPlayDebitBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (abc *AdjustPlayDebitBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	upon_err := uponErr(abc.ChatId, abc.MsgId) // closure to fill in the error details
 	settledUp := resp.NewTextResponse("We are all settled up for the day", abc.ChatId, abc.MsgId)
 	// Getting the recovery for the day

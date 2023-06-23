@@ -14,7 +14,7 @@ import (
 )
 
 type AttendanceBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
 func uponErr(chatid, msgid int64) func(error) *resp.ErrBotResp {
@@ -30,7 +30,7 @@ func uponErr(chatid, msgid int64) func(error) *resp.ErrBotResp {
 // gets the total expenses, recovered expenses
 // gets the play days and player estimate for the play days
 // sends exact debit transaction
-func (abc *AttendanceBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (abc *AttendanceBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	// Getting handles to all the datatbase connections
 	accounts := ctx.DBAdp.Switch("accounts")
 	transacs := ctx.DBAdp.Switch("transacs")

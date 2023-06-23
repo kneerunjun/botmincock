@@ -12,11 +12,11 @@ The data for the account though is archived and not deleted
 ====================*/
 
 type DeregBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 }
 
 // Execute : for the account id this will archive the account from the database
-func (debc *DeregBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (debc *DeregBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	if err := biz.DeregisterAccount(&biz.UserAccount{TelegID: debc.SenderId}, ctx.DBAdp); err != nil {
 		de, _ := err.(*biz.DomainError)
 		de.LogE()

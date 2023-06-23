@@ -311,10 +311,19 @@ func main() {
 						"user":    updt.PollAnswer.User.Id,
 						"answer":  updt.PollAnswer.Options,
 					}).Debug("someone just answered the poll")
-
+					command, err := cmd.ParsePollAnsCmd(updt)
+					if err != nil {
+						respChn <- resp.NewErrResponse(err, "ParsePollAnsCmd", "I was trying to make sense of your poll selection , something went wrong", updt.Message.Chat.Id, updt.Message.Id)
+					} else {
+						respChn <- ResponseFromCommand(command, updt)
+					}
 				}()
 			case resp := <-respChn:
-				go SendBotHttp(fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl()))
+				// NOTE: when the result from executing a command is nil, the bot need not send out any response
+				if resp != nil {
+					go SendBotHttp(fmt.Sprintf("%s%s", botmincock.UrlBot(), resp.SendMsgUrl()))
+				}
+
 			case <-cancel:
 				return
 			}
@@ -327,11 +336,11 @@ func main() {
 	wg.Wait()
 }
 
-func ResponseFromCommand(c cmd.BotCommand, updt core.BotUpdate) core.BotResponse {
-	cmdcoll, ok := c.(cmd.CmdForColl)
+func ResponseFromCommand(c core.BotCommand, updt core.BotUpdate) core.BotResponse {
+	cmdcoll, ok := c.(core.CmdForColl)
 	if !ok {
 		return resp.NewErrResponse(fmt.Errorf("failed to read collection name for the command"), "ResponseFromCommand", "Some internal error could not parse your command", updt.Message.Id, updt.Message.Id)
 	} else {
-		return c.Execute(cmd.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
+		return c.Execute(core.NewExecCtx().SetDB(dbadp.NewMongoAdpator(MONGO_ADDRS, DB_NAME, cmdcoll.CollName())))
 	}
 }

@@ -9,11 +9,11 @@ import (
 )
 
 type ElevAccBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 	TargetAcc int64 // id of the account that would be elevated
 }
 
-func (eabc *ElevAccBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (eabc *ElevAccBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	/*====================
 	- verify if the commanding account is of admin level
 	- Elevate account

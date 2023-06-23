@@ -29,7 +29,7 @@ func text_to_cmdargs(pattrn *regexp.Regexp, text string, result *map[string]inte
 // ParseBotCmd : for the given update and text message that is addressed to the bot
 // this will transform it to a command object
 // a command object is action, channel over to send response, and reference of the chat
-func ParseBotCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
+func ParseBotCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (core.BotCommand, error) {
 	// from the update message this will parse the bot command to process
 	// bot command will also get references to the messages
 	// textual command needs to be broken down to an action that the bot can execute
@@ -43,7 +43,7 @@ func ParseBotCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 					cmdArgs[name] = matches[i]
 				}
 			}
-			anyCmd := &AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
+			anyCmd := &core.AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
 			switch cmdArgs["cmd"] {
 			case "registerme":
 				return &RegMeBotCmd{AnyBotCmd: anyCmd, UserEmail: cmdArgs["email"].(string), FullName: fmt.Sprintf("%s %s", updt.Message.From.FName, updt.Message.From.LName)}, nil
@@ -88,12 +88,12 @@ func ParseBotCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, er
 	return nil, fmt.Errorf("failed to parse bot command, none of the patterns matches command")
 }
 
-func ParseTextCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, error) {
+func ParseTextCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (core.BotCommand, error) {
 	// there arent too many components in the message that need to be
 	for _, pattrn := range botCmnds {
 		cmdArgs := map[string]interface{}{} // all that a command ever needs to execute and send a reponse
 		if text_to_cmdargs(pattrn, updt.Message.Text, &cmdArgs) {
-			anyCmd := &AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
+			anyCmd := &core.AnyBotCmd{MsgId: updt.Message.Id, ChatId: updt.Message.Chat.Id, SenderId: updt.Message.From.Id}
 			cmd := strings.ToLower(cmdArgs["cmd"].(string))
 			switch cmd {
 			case "goodmorning", "good morning", "gm":
@@ -104,4 +104,32 @@ func ParseTextCmd(updt core.BotUpdate, botCmnds []*regexp.Regexp) (BotCommand, e
 		}
 	}
 	return nil, nil
+}
+
+// ParsePollAnsCmd : When someone answers a poll it sends out an update
+// UPdate such received is then converted to command which can be executed
+func ParsePollAnsCmd(updt core.BotUpdate) (core.BotCommand, error) {
+	if len(updt.PollAnswer.Options) <= 0 {
+		return nil, fmt.Errorf("option selected could not be read, or did you not select any option?")
+	} else {
+		return &PollAnsBotCmd{
+			UserID: updt.PollAnswer.User.Id,
+			// TODO: check out the options here in sequence
+			// For now we are just hard hacking the integers here
+			Playdays: func(opt int) int {
+				switch opt {
+				case 0:
+					return 30
+				case 1:
+					return 15
+				case 2:
+					return 8
+				case 3:
+					return 0
+				}
+				return 31
+			}(updt.PollAnswer.Options[0]),
+		}, nil
+	}
+
 }

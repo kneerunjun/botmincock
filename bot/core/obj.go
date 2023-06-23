@@ -1,6 +1,12 @@
 package core
 
-import "fmt"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/kneerunjun/botmincock/dbadp"
+	"github.com/sirupsen/logrus"
+)
 
 // BotEnv : Basic telegram bot environment fields
 // This can be extended depending on the implementation sought
@@ -75,4 +81,53 @@ type BotUpdate struct {
 		} `json:"user"`
 		Options []int `json:"option_ids"` //answers that the user may have chosen
 	} `json:"poll_answer"`
+}
+
+/*
+====================
+Flywheel object that gets injected in the command
+====================
+*/
+type CmdExecCtx struct {
+	DBAdp dbadp.DbAdaptor //DBAdaptor is to be pushed to biz functions for calling out domain functions
+}
+
+func (cec *CmdExecCtx) SetDB(db dbadp.DbAdaptor) *CmdExecCtx {
+	cec.DBAdp = db
+	return cec
+}
+func NewExecCtx() *CmdExecCtx {
+	return &CmdExecCtx{}
+}
+
+/*====================
+Generic bot command, all your new commands need to derive from this
+====================*/
+// AnyBotCmd : essentials fr the bot command and formulate the response
+// use this to derive from in actual commands
+type AnyBotCmd struct {
+	MsgId    int64 `json:"msg_id"`
+	ChatId   int64 `json:"chat_id"`
+	SenderId int64 `json:"from_id"`
+}
+
+func (abc *AnyBotCmd) Log() {
+	logrus.WithFields(logrus.Fields{
+		"msg_id":  abc.MsgId,
+		"chat_id": abc.ChatId,
+		"from_id": abc.SenderId,
+	}).Debug("any bot command")
+}
+
+func (abc *AnyBotCmd) AsMap() map[string]interface{} {
+	return map[string]interface{}{
+		"msg_id":  abc.MsgId,
+		"chat_id": abc.ChatId,
+		"from_id": abc.SenderId,
+	}
+}
+
+func (abc *AnyBotCmd) AsJsonByt() []byte {
+	byt, _ := json.Marshal(abc)
+	return byt
 }

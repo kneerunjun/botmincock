@@ -34,3 +34,19 @@ type BotUpdtFilter interface {
 	Apply(updt *BotUpdate) (bool, bool)
 	PassThruChn() chan BotUpdate
 }
+
+// BotCommand : Any command that can execute and send back a BotResponse
+type BotCommand interface {
+	Execute(ctx *CmdExecCtx) BotResponse
+}
+
+type Loggable interface {
+	Log()
+	AsMap() map[string]interface{}
+	AsJsonByt() []byte
+}
+
+// CmdForColl : for all the commands that work on mongo collections
+type CmdForColl interface {
+	CollName() string
+}

@@ -11,7 +11,7 @@ import (
 
 // RegMeBotCmd : helps resgister the new user
 type RegMeBotCmd struct {
-	*AnyBotCmd
+	*core.AnyBotCmd
 	UserEmail string `json:"email"`
 	FullName  string `json:"full_name"`
 }
@@ -37,7 +37,7 @@ func (rbc *RegMeBotCmd) AsJsonByt() []byte {
 
 // Execute : from the command will pick the params required for registering a new account
 // Upon getting the account registered text response of the newly registered account
-func (reg *RegMeBotCmd) Execute(ctx *CmdExecCtx) core.BotResponse {
+func (reg *RegMeBotCmd) Execute(ctx *core.CmdExecCtx) core.BotResponse {
 	newAcc := &biz.UserAccount{TelegID: reg.SenderId, Email: reg.UserEmail, Name: reg.FullName}
 	err := biz.RegisterNewAccount(newAcc, ctx.DBAdp)
 	if err != nil {
